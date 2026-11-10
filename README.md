@@ -5,6 +5,19 @@ in the style of the classic 1.12-era item-duct mods. Mod id `modernitemducts`, M
 
 ![Item ducts with servos, retrievers and chests](docs/screenshot.png)
 
+## Versions
+
+| Minecraft | Loader | Branch | Download |
+|---|---|---|---|
+| 1.20.1 | Forge 47 | [`main`](https://github.com/owenlvnek/ModernItemDucts/tree/main) | [v0.3.6](https://github.com/owenlvnek/ModernItemDucts/releases/tag/v0.3.6) |
+| 1.21.1 | NeoForge 21.1 | [`1.21.1`](https://github.com/owenlvnek/ModernItemDucts/tree/1.21.1) | [v0.3.6-mc1.21.1](https://github.com/owenlvnek/ModernItemDucts/releases/tag/v0.3.6-mc1.21.1) |
+| 26.1.2 | NeoForge 26.1 | [`26.1.2`](https://github.com/owenlvnek/ModernItemDucts/tree/26.1.2) | [v0.3.6-mc26.1.2](https://github.com/owenlvnek/ModernItemDucts/releases/tag/v0.3.6-mc26.1.2) |
+| 26.2 | NeoForge 26.2 | [`26.2`](https://github.com/owenlvnek/ModernItemDucts/tree/26.2) | [v0.3.6-mc26.2](https://github.com/owenlvnek/ModernItemDucts/releases/tag/v0.3.6-mc26.2) |
+| 26.3 | NeoForge 26.3 | [`26.3`](https://github.com/owenlvnek/ModernItemDucts/tree/26.3) | [v0.3.6-mc26.3](https://github.com/owenlvnek/ModernItemDucts/releases/tag/v0.3.6-mc26.3) |
+
+Each Minecraft version lives on its own branch. On 26.3 the config file is
+`config/modernitemducts-local.toml` (NeoForge removed the old common config type).
+
 ## Provenance
 
 The behaviour was reimplemented clean-room style: the code was written from a plain-language
