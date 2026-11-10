@@ -5,8 +5,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.entity.player.Player;
@@ -64,20 +62,11 @@ public class DuctBlock extends BaseEntityBlock {
     private final Map<BlockState, VoxelShape> stateShapes = new ConcurrentHashMap<>();
     public final DuctType type;
 
-    /** Block codec (required for BaseEntityBlock since 1.20.5); the duct type is fixed per registry entry. */
-    public static final MapCodec<DuctBlock> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            DuctType.CODEC.fieldOf("duct_type").forGetter(b -> b.type), propertiesCodec()).apply(i, DuctBlock::new));
-
-    @Override
-    protected MapCodec<? extends BaseEntityBlock> codec() {
-        return CODEC;
-    }
-
     /** Shared block properties (the registry id is set by the deferred register). */
     public static Properties properties(Properties p) {
         return p.mapColor(MapColor.METAL).strength(1.0f, 2.0f).sound(SoundType.STONE)
-                .noOcclusion().isViewBlocking((s, l, pos) -> false).isSuffocating((s, l, pos) -> false)
-                .pushReaction(PushReaction.BLOCK);
+                .noOcclusion().isViewBlocking((s, l, pos, box) -> false).isSuffocating((s, l, pos) -> false)
+                .pushReaction(PushReaction.IMMOVEABLE);
     }
 
     public DuctBlock(DuctType type, Properties props) {

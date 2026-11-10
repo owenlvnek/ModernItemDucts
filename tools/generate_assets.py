@@ -707,13 +707,14 @@ def gen_duct(block_id, family, opaque):
     }})
 
     # loot table keeps the routing weight
+    # 26.3 loot format: single "condition" / "modifier" objects with a "type" key
     write_json(os.path.join(DATA, "loot_table", "blocks", f"{block_id}.json"), {
         "type": "minecraft:block",
         "pools": [{
-            "rolls": 1, "bonus_rolls": 0,
-            "entries": [{"type": "minecraft:item", "name": f"{MODID}:{block_id}", "functions": [
-                {"function": "minecraft:copy_state", "block": f"{MODID}:{block_id}", "properties": ["weight"]}]}],
-            "conditions": [{"condition": "minecraft:survives_explosion"}],
+            "rolls": 1,
+            "condition": {"type": "minecraft:survives_explosion"},
+            "entries": [{"type": "minecraft:item", "name": f"{MODID}:{block_id}",
+                         "modifier": {"type": "minecraft:copy_state", "block": f"{MODID}:{block_id}", "properties": ["weight"]}}],
         }]})
 
 
@@ -929,7 +930,7 @@ def gen_structure(name, sx, sy, sz):
                 pos = list_payload(3, [nbt_int(x), nbt_int(y), nbt_int(z)])
                 blocks.append(compound_payload([tag(9, "pos", pos), tag(3, "state", nbt_int(0 if y == 0 else 1))]))
     root = compound_payload([
-        tag(3, "DataVersion", nbt_int(4903)),
+        tag(3, "DataVersion", nbt_int(5023)),
         tag(9, "size", list_payload(3, [nbt_int(sx), nbt_int(sy), nbt_int(sz)])),
         tag(9, "palette", list_payload(10, palette)),
         tag(9, "blocks", list_payload(10, blocks)),

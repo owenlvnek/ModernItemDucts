@@ -3,25 +3,20 @@
   "pools": [
     {
       "rolls": 1,
-      "bonus_rolls": 0,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
       "entries": [
         {
           "type": "minecraft:item",
           "name": "modernitemducts:item_duct_opaque",
-          "functions": [
-            {
-              "function": "minecraft:copy_state",
-              "block": "modernitemducts:item_duct_opaque",
-              "properties": [
-                "weight"
-              ]
-            }
-          ]
-        }
-      ],
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
+          "modifier": {
+            "type": "minecraft:copy_state",
+            "block": "modernitemducts:item_duct_opaque",
+            "properties": [
+              "weight"
+            ]
+          }
         }
       ]
     }

@@ -1,10 +1,10 @@
 # Modern Item Ducts
 
-A Minecraft **26.2 / NeoForge 26.2** mod: tiered item ducts with servos, retrievers and filters,
+A Minecraft **26.3 / NeoForge 26.3** mod: tiered item ducts with servos, retrievers and filters,
 in the style of the classic 1.12-era item-duct mods. Mod id `modernitemducts`, MIT licensed.
 
-> Branch `26.2` (NeoForge). Other versions: `main` (Forge 1.20.1), `1.21.1`, `26.1.2` (NeoForge).
-> Behaviour, ids, art and GUI are the same on all of them. Jar: `modernitemducts-<version>+mc26.2.jar`.
+> Branch `26.3` (NeoForge). Other versions: `main` (Forge 1.20.1), `1.21.1`, `26.1.2`, `26.2` (NeoForge).
+> Behaviour, ids, art and GUI are the same on all of them. Jar: `modernitemducts-<version>+mc26.3.jar`.
 
 ![Item ducts with servos, retrievers and chests](docs/screenshot.png)
 
@@ -90,7 +90,7 @@ sort modes. Locked flags are forced to their defaults (also on load).
 
 * **Default redstone mode is “active only when powered”, matching the original** — a newly
   placed servo or retriever does nothing until it gets a signal. Configurable with
-  `defaultRedstoneMode` in `config/modernitemducts-common.toml` (`HIGH`, `LOW`, `IGNORE`).
+  `defaultRedstoneMode` in `config/modernitemducts-local.toml` (a LOCAL config since 26.3) (`HIGH`, `LOW`, `IGNORE`).
 * Blocked faces stay blocked whatever the neighbour is.
 * Backlog acceptance checks *any* servo/retriever on the duct (a filter never blocks it).
 * “Heading to backlog” is persisted.

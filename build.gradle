@@ -1,4 +1,4 @@
-// NeoForge 26.2 build, following the official NeoForge MDK (ModDevGradle) layout.
+// NeoForge 26.3 build, following the official NeoForge MDK (ModDevGradle) layout.
 plugins {
     id 'java-library'
     id 'net.neoforged.moddev' version '2.0.148'

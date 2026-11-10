@@ -100,11 +100,11 @@ public class DuctRenderer implements BlockEntityRenderer<DuctBlockEntity, DuctRe
             pose.pushPose();
             pose.translate(0.5, 0.5, 0.5);
             switch (cap.face()) {
-                case SOUTH -> pose.mulPose(Axis.YP.rotationDegrees(180));
-                case WEST -> pose.mulPose(Axis.YP.rotationDegrees(90));
-                case EAST -> pose.mulPose(Axis.YP.rotationDegrees(-90));
-                case UP -> pose.mulPose(Axis.XP.rotationDegrees(90));
-                case DOWN -> pose.mulPose(Axis.XP.rotationDegrees(-90));
+                case SOUTH -> pose.rotate(Axis.YP.rotationDegrees(180));
+                case WEST -> pose.rotate(Axis.YP.rotationDegrees(90));
+                case EAST -> pose.rotate(Axis.YP.rotationDegrees(-90));
+                case UP -> pose.rotate(Axis.XP.rotationDegrees(90));
+                case DOWN -> pose.rotate(Axis.XP.rotationDegrees(-90));
                 default -> {}
             }
             pose.translate(-0.5, -0.5, -0.5);
@@ -118,7 +118,7 @@ public class DuctRenderer implements BlockEntityRenderer<DuctBlockEntity, DuctRe
             pose.pushPose();
             pose.translate(0.5 + item.x(), 0.45 + item.y(), 0.5 + item.z());
             pose.scale(0.7f, 0.7f, 0.7f);
-            pose.mulPose(Axis.YP.rotationDegrees(state.spin));
+            pose.rotate(Axis.YP.rotationDegrees(state.spin));
             pose.translate(0, -0.125, 0);
             item.model().submit(pose, out, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
             pose.popPose();

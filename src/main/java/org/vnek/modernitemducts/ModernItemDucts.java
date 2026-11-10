@@ -23,7 +23,7 @@ public class ModernItemDucts {
 
     public ModernItemDucts(IEventBus modBus, ModContainer container) {
         Registration.register(modBus);
-        container.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        container.registerConfig(ModConfig.Type.LOCAL, Config.SPEC); // per-machine, not synced (was COMMON)
         modBus.addListener(ModernItemDucts::registerCapabilities);
         GameTestRegistration.register(modBus);
         NeoForge.EVENT_BUS.register(DuctManager.Events.class);
