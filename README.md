@@ -1,10 +1,10 @@
 # Modern Item Ducts
 
-A Minecraft **26.1.2 / NeoForge 26.1.2** mod: tiered item ducts with servos, retrievers and filters,
+A Minecraft **26.2 / NeoForge 26.2** mod: tiered item ducts with servos, retrievers and filters,
 in the style of the classic 1.12-era item-duct mods. Mod id `modernitemducts`, MIT licensed.
 
-> Branch `26.1.2` (NeoForge). Other versions: `main` (Forge 1.20.1), `1.21.1` (NeoForge 1.21.1).
-> Behaviour, ids, art and GUI are the same on all of them. Jar: `modernitemducts-<version>+mc26.1.2.jar`.
+> Branch `26.2` (NeoForge). Other versions: `main` (Forge 1.20.1), `1.21.1`, `26.1.2` (NeoForge).
+> Behaviour, ids, art and GUI are the same on all of them. Jar: `modernitemducts-<version>+mc26.2.jar`.
 
 ![Item ducts with servos, retrievers and chests](docs/screenshot.png)
 

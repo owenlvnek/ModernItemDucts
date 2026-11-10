@@ -929,7 +929,7 @@ def gen_structure(name, sx, sy, sz):
                 pos = list_payload(3, [nbt_int(x), nbt_int(y), nbt_int(z)])
                 blocks.append(compound_payload([tag(9, "pos", pos), tag(3, "state", nbt_int(0 if y == 0 else 1))]))
     root = compound_payload([
-        tag(3, "DataVersion", nbt_int(4790)),
+        tag(3, "DataVersion", nbt_int(4903)),
         tag(9, "size", list_payload(3, [nbt_int(sx), nbt_int(sy), nbt_int(sz)])),
         tag(9, "palette", list_payload(10, palette)),
         tag(9, "blocks", list_payload(10, blocks)),

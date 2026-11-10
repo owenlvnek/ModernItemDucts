@@ -3,7 +3,9 @@ package org.vnek.modernitemducts.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -34,6 +36,9 @@ import java.util.List;
  * into a {@link State} on extraction, and {@link #submit} only draws from that copy.
  */
 public class DuctRenderer implements BlockEntityRenderer<DuctBlockEntity, DuctRenderer.State> {
+    /** Block-atlas cutout with back-face culling (what Sheets#cutoutBlockSheet returned up to 26.1). */
+    private static final RenderType CAP_RENDER_TYPE = RenderTypes.entityCutoutCull(TextureAtlas.LOCATION_BLOCKS);
+
     private final ItemModelResolver itemModels;
 
     public DuctRenderer(BlockEntityRendererProvider.Context ctx) {
@@ -104,7 +109,7 @@ public class DuctRenderer implements BlockEntityRenderer<DuctBlockEntity, DuctRe
             }
             pose.translate(-0.5, -0.5, -0.5);
             // tintindex 0 faces take the tier colour, untinted faces keep their texture colours
-            out.submitBlockModel(pose, Sheets.cutoutBlockSheet(), List.of(cap.part()), new int[]{cap.tint()},
+            out.submitBlockModel(pose, CAP_RENDER_TYPE, List.of(cap.part()), new int[]{cap.tint()},
                     state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
             pose.popPose();
         }

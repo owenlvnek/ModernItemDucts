@@ -73,7 +73,7 @@ public final class DuctManager {
         // Neighbours that linked to it must notice it is gone.
         for (Direction d : Direction.values()) {
             BlockPos np = duct.getBlockPos().relative(d);
-            if (level.hasChunkAt(np) && level.getBlockEntity(np) instanceof DuctBlockEntity nb && ducts.contains(nb)) {
+            if (level.isLoaded(np) && level.getBlockEntity(np) instanceof DuctBlockEntity nb && ducts.contains(nb)) {
                 requestScan(nb);
             }
         }

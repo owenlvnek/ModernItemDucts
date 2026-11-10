@@ -13,9 +13,8 @@ import javax.annotation.Nullable;
  * Slot-style view of a NeoForge item {@link ResourceHandler}, so the routing code keeps its
  * simple "simulate / insert / extract a stack" vocabulary.
  * <p>
- * Every operation runs in its own nested transaction under whatever transaction is already open
- * on this thread (for example an external block pushing into a duct), or a root transaction if
- * none is. Simulations are always rolled back; real operations commit into their parent, so they
+ * Every operation runs in its own nested transaction: under the transaction a duct is currently
+ * handling a push in (see {@link #within}), or a root transaction otherwise. Simulations are always rolled back; real operations commit into their parent, so they
  * only take effect if the outer transaction commits too.
  */
 public final class Inv {
@@ -25,10 +24,27 @@ public final class Inv {
         this.handler = handler;
     }
 
-    @SuppressWarnings("deprecation")
+    /**
+     * Transaction that duct-side operations must nest under, set explicitly while a duct handles a
+     * push that arrived inside someone else's transaction (see {@link #within}). Null = root.
+     */
+    private static final ThreadLocal<TransactionContext> CURRENT = new ThreadLocal<>();
+
     @Nullable
     private static TransactionContext outer() {
-        return Transaction.getCurrentOpenedTransaction();
+        return CURRENT.get();
+    }
+
+    /** Runs {@code body} with every Inv operation nested under {@code transaction}. */
+    public static <T> T within(TransactionContext transaction, java.util.function.Supplier<T> body) {
+        TransactionContext previous = CURRENT.get();
+        CURRENT.set(transaction);
+        try {
+            return body.get();
+        } finally {
+            if (previous == null) CURRENT.remove();
+            else CURRENT.set(previous);
+        }
     }
 
     public int getSlots() {

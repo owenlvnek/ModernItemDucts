@@ -186,7 +186,7 @@ public class DuctBlockEntity extends BlockEntity {
     public Inv neighborHandler(Direction d) {
         if (level == null) return null;
         BlockPos np = neighborPos(d);
-        if (!level.hasChunkAt(np)) return null;
+        if (!level.isLoaded(np)) return null;
         if (level.getBlockEntity(np) instanceof DuctBlockEntity) return null;
         ResourceHandler<ItemResource> h = level.getCapability(Capabilities.Item.BLOCK, np, d.getOpposite());
         return h == null ? null : new Inv(h);
@@ -205,7 +205,7 @@ public class DuctBlockEntity extends BlockEntity {
     public DuctBlockEntity linkedDuctUnchecked(Direction d) {
         if (conn[d.ordinal()] != ConnectionType.DUCT || level == null) return null;
         BlockPos np = neighborPos(d);
-        if (!level.hasChunkAt(np)) return null;
+        if (!level.isLoaded(np)) return null;
         return level.getBlockEntity(np) instanceof DuctBlockEntity nb
                 && nb.conn[d.getOpposite().ordinal()] == ConnectionType.DUCT ? nb : null;
     }
@@ -284,7 +284,7 @@ public class DuctBlockEntity extends BlockEntity {
         for (Direction d : Direction.values()) {
             int bit = 1 << d.ordinal();
             if ((crossChunkMask & bit) == 0) continue;
-            boolean loaded = level.hasChunkAt(neighborPos(d));
+            boolean loaded = level.isLoaded(neighborPos(d));
             if (loaded != ((loadedMask & bit) != 0)) {
                 requestScan();
                 return;
@@ -301,7 +301,7 @@ public class DuctBlockEntity extends BlockEntity {
             int i = d.ordinal();
             next[i] = ConnectionType.NONE;
             BlockPos np = neighborPos(d);
-            if (!level.hasChunkAt(np)) continue;
+            if (!level.isLoaded(np)) continue;
             loaded |= 1 << i;
             if (isBlocked(d)) continue; // blocked faces stay blocked whatever the neighbour (quirk 9 fixed)
             BlockEntity be = level.getBlockEntity(np);
@@ -327,7 +327,7 @@ public class DuctBlockEntity extends BlockEntity {
             invalidateNetwork();
             level.invalidateCapabilities(worldPosition); // our exposed faces changed
             for (Direction d : Direction.values()) {
-                if (level.hasChunkAt(neighborPos(d)) && level.getBlockEntity(neighborPos(d)) instanceof DuctBlockEntity nb) nb.requestScan();
+                if (level.isLoaded(neighborPos(d)) && level.getBlockEntity(neighborPos(d)) instanceof DuctBlockEntity nb) nb.requestScan();
             }
             updateBlockState();
         }
@@ -757,7 +757,7 @@ public class DuctBlockEntity extends BlockEntity {
             pushGuard = true;
             try {
                 ItemStack stack = resource.toStack(amount);
-                ItemStack rem = push(face, stack, transaction);
+                ItemStack rem = Inv.within(transaction, () -> push(face, stack, transaction));
                 return amount - rem.getCount();
             } finally {
                 pushGuard = false;
