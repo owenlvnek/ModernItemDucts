@@ -167,8 +167,7 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentMenu> {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        renderBackground(g);
-        super.render(g, mouseX, mouseY, partial);
+        super.render(g, mouseX, mouseY, partial); // draws the background itself since 1.20.2
         renderTooltip(g, mouseX, mouseY);
     }
 

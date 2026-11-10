@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "modernitemducts:item_duct"
+    },
+    {
+      "item": "modernitemducts:item_duct"
+    },
+    {
+      "item": "modernitemducts:item_duct"
+    },
+    {
+      "item": "modernitemducts:item_duct"
+    },
+    {
+      "item": "modernitemducts:item_duct"
+    },
+    {
+      "item": "modernitemducts:item_duct"
+    },
+    {
+      "item": "minecraft:iron_ingot"
+    }
+  ],
+  "result": {
+    "id": "modernitemducts:item_duct_opaque",
+    "count": 6
+  }
+}

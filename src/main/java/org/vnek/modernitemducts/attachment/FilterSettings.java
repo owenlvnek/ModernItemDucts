@@ -1,5 +1,6 @@
 package org.vnek.modernitemducts.attachment;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -10,7 +11,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -110,20 +110,20 @@ public class FilterSettings {
         return false;
     }
 
-    /** Item identity check honouring the damage / NBT ignore flags. */
+    /**
+     * Item identity check honouring the damage / data ignore flags. "Data" means the stack's data
+     * components (1.20.5+); durability is excluded from that comparison because it has its own flag.
+     */
     public static boolean sameType(ItemStack a, ItemStack b, boolean ignoreDamage, boolean ignoreNbt) {
         if (a.getItem() != b.getItem()) return false;
         if (!ignoreDamage && a.isDamageableItem() && a.getDamageValue() != b.getDamageValue()) return false;
         if (ignoreNbt) return true;
-        return Objects.equals(stripDamage(a.getTag()), stripDamage(b.getTag()));
-    }
-
-    /** Damage is tracked by its own flag, so it is excluded from the NBT comparison. */
-    private static CompoundTag stripDamage(CompoundTag tag) {
-        if (tag == null || !tag.contains("Damage")) return tag == null || tag.isEmpty() ? null : tag;
-        CompoundTag copy = tag.copy();
-        copy.remove("Damage");
-        return copy.isEmpty() ? null : copy;
+        ItemStack x = a.copyWithCount(1), y = b.copyWithCount(1);
+        if (x.isDamageableItem()) {
+            x.setDamageValue(0);
+            y.setDamageValue(0);
+        }
+        return ItemStack.isSameItemSameComponents(x, y);
     }
 
     public void sanitize() {
@@ -132,14 +132,14 @@ public class FilterSettings {
         for (int i = 0; i < MAX_SLOTS; i++) if (items.get(i).getCount() > 1) items.get(i).setCount(1);
     }
 
-    public CompoundTag save() {
+    public CompoundTag save(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
         tag.putInt("Flags", flags);
         ListTag list = new ListTag();
         for (int i = 0; i < slotCount(); i++) {
             ItemStack s = items.get(i);
             if (s.isEmpty()) continue;
-            CompoundTag e = s.save(new CompoundTag());
+            CompoundTag e = (CompoundTag) s.copyWithCount(1).save(registries);
             e.putByte("Slot", (byte) i);
             list.add(e);
         }
@@ -147,14 +147,14 @@ public class FilterSettings {
         return tag;
     }
 
-    public void load(CompoundTag tag) {
+    public void load(CompoundTag tag, HolderLookup.Provider registries) {
         flags = tag.getInt("Flags");
         for (int i = 0; i < MAX_SLOTS; i++) items.set(i, ItemStack.EMPTY);
         ListTag list = tag.getList("Items", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag e = list.getCompound(i);
             int slot = e.getByte("Slot");
-            if (slot >= 0 && slot < MAX_SLOTS) items.set(slot, ItemStack.of(e));
+            if (slot >= 0 && slot < MAX_SLOTS) items.set(slot, ItemStack.parseOptional(registries, e));
         }
         sanitize();
     }

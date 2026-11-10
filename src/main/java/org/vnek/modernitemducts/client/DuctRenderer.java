@@ -83,4 +83,10 @@ public class DuctRenderer implements BlockEntityRenderer<DuctBlockEntity> {
     public boolean shouldRenderOffScreen(DuctBlockEntity be) {
         return false;
     }
+
+    /** Packets render up to one block beyond the duct. */
+    @Override
+    public net.minecraft.world.phys.AABB getRenderBoundingBox(DuctBlockEntity be) {
+        return be.renderBounds();
+    }
 }

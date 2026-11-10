@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    [
+      {
+        "item": "modernitemducts:item_filter_copper"
+      },
+      {
+        "item": "modernitemducts:item_filter_iron"
+      },
+      {
+        "item": "modernitemducts:item_filter_gold"
+      }
+    ],
+    {
+      "item": "minecraft:diamond"
+    }
+  ],
+  "result": {
+    "id": "modernitemducts:item_filter_diamond",
+    "count": 1
+  }
+}

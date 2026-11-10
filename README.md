@@ -1,7 +1,10 @@
 # Modern Item Ducts
 
-A Minecraft **1.20.1 / Forge 47** mod: tiered item ducts with servos, retrievers and filters,
+A Minecraft **1.21.1 / NeoForge 21.1** mod: tiered item ducts with servos, retrievers and filters,
 in the style of the classic 1.12-era item-duct mods. Mod id `modernitemducts`, MIT licensed.
+
+> Branch `1.21.1` (NeoForge). The original Forge 1.20.1 version lives on `main`; behaviour, ids,
+> art and GUI are the same on both. Jar: `modernitemducts-<version>+mc1.21.1.jar`.
 
 ![Item ducts with servos, retrievers and chests](docs/screenshot.png)
 
@@ -20,8 +23,8 @@ styles on servos, retrievers and filters were chosen by looking at those mods. G
 
 This mod is not affiliated with or endorsed by Thermal Series, CoFH or Team CoFH. It has no
 dependency on any other mod and registers nothing outside its own `modernitemducts` namespace
-(plus adding its own wrench to the common `forge:tools/wrench` tag and its ducts to
-`minecraft:mineable/pickaxe`).
+(plus adding its own wrench to the common `c:tools/wrench` and `forge:tools/wrench` tags and its
+ducts to `minecraft:mineable/pickaxe`).
 
 ## Contents
 
@@ -158,7 +161,7 @@ the next duct's update).
 ## Building and testing
 
 ```
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+# Gradle runs on Java 17+; the Java 21 toolchain is provisioned automatically (foojay).
 ./gradlew --no-daemon build                 # jar in build/libs/
 ./gradlew --no-daemon runGameTestServer     # headless GameTests
 python3 -I tools/generate_assets.py         # regenerate textures/models/data (needs Pillow)

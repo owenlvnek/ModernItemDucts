@@ -5,6 +5,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
@@ -28,7 +31,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.network.NetworkHooks;
 import org.vnek.modernitemducts.Registration;
 import org.vnek.modernitemducts.attachment.Attachment;
 import org.vnek.modernitemducts.item.DuctBlockItem;
@@ -60,6 +62,14 @@ public class DuctBlock extends BaseEntityBlock {
 
     private final Map<BlockState, VoxelShape> stateShapes = new ConcurrentHashMap<>();
     public final DuctType type;
+
+    /** Block codec (required for BaseEntityBlock since 1.20.5); the duct type is fixed per registry entry. */
+    public static final MapCodec<DuctBlock> CODEC = DuctType.CODEC.fieldOf("duct_type").xmap(DuctBlock::new, b -> b.type);
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
 
     public DuctBlock(DuctType type) {
         super(Properties.of().mapColor(MapColor.METAL).strength(1.0f, 2.0f).sound(SoundType.STONE)
@@ -111,7 +121,7 @@ public class DuctBlock extends BaseEntityBlock {
     }
 
     @Override
-    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
         VoxelShape shape = stateShape(state);
         if (level.getBlockEntity(pos) instanceof DuctBlockEntity be) {
             VoxelShape att = be.attachmentShape();
@@ -152,16 +162,15 @@ public class DuctBlock extends BaseEntityBlock {
 
     // ------------------------------------------------------------------ interaction
 
+    /** Right-click with an item in hand: wrenches act on the duct, anything else on an attachment opens its GUI. */
     @Override
-    @SuppressWarnings("deprecation")
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-        if (!(level.getBlockEntity(pos) instanceof DuctBlockEntity be)) return InteractionResult.PASS;
-        ItemStack held = player.getItemInHand(hand);
-        Vec3 local = hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
-        Part part = hitPart(be, local, hit.getDirection());
+    protected ItemInteractionResult useItemOn(ItemStack held, BlockState state, Level level, BlockPos pos, Player player,
+                                              InteractionHand hand, BlockHitResult hit) {
+        if (!(level.getBlockEntity(pos) instanceof DuctBlockEntity be)) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        Part part = hitPart(be, hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ()), hit.getDirection());
 
         if (WrenchItem.isWrench(held)) {
-            if (level.isClientSide) return InteractionResult.SUCCESS;
+            if (level.isClientSide) return ItemInteractionResult.SUCCESS;
             if (player.isShiftKeyDown()) {
                 level.destroyBlock(pos, true, player);
             } else if (part.type() == PartType.ATTACHMENT) {
@@ -169,23 +178,36 @@ public class DuctBlock extends BaseEntityBlock {
             } else {
                 be.toggleBlocked(part.face(), player);
             }
-            return InteractionResult.CONSUME;
+            return ItemInteractionResult.CONSUME;
         }
-
         if (part.type() == PartType.ATTACHMENT) {
-            if (!level.isClientSide && player instanceof ServerPlayer sp) {
-                Direction face = part.face();
-                Attachment att = be.getAttachment(face);
-                NetworkHooks.openScreen(sp, new AttachmentMenu.Provider(be, face),
-                        buf -> AttachmentMenu.writeOpenData(buf, pos, face, att));
-            }
-            return InteractionResult.sidedSuccess(level.isClientSide);
+            openAttachment(level, player, be, part.face());
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
-        return InteractionResult.PASS;
+        // Not ours: let the held item act (e.g. an attachment item placing itself).
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    }
+
+    /** Empty-hand right-click: an attachment opens its GUI; the duct body has none. */
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (!(level.getBlockEntity(pos) instanceof DuctBlockEntity be)) return InteractionResult.PASS;
+        Part part = hitPart(be, hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ()), hit.getDirection());
+        if (part.type() != PartType.ATTACHMENT) return InteractionResult.PASS;
+        openAttachment(level, player, be, part.face());
+        return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    private static void openAttachment(Level level, Player player, DuctBlockEntity be, Direction face) {
+        if (level.isClientSide || !(player instanceof ServerPlayer sp)) return;
+        Attachment att = be.getAttachment(face);
+        if (att == null) return;
+        BlockPos pos = be.getBlockPos();
+        sp.openMenu(new AttachmentMenu.Provider(be, face), buf -> AttachmentMenu.writeOpenData(buf, pos, face, att));
     }
 
     @Override
-    public ItemStack getCloneItemStack(BlockState state, HitResult target, BlockGetter level, BlockPos pos, Player player) {
+    public ItemStack getCloneItemStack(BlockState state, HitResult target, LevelReader level, BlockPos pos, Player player) {
         if (target instanceof BlockHitResult bhr && level.getBlockEntity(pos) instanceof DuctBlockEntity be) {
             Part part = hitPart(be, bhr.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ()), bhr.getDirection());
             if (part.type() == PartType.ATTACHMENT) return be.getAttachment(part.face()).toItem();
@@ -194,14 +216,12 @@ public class DuctBlock extends BaseEntityBlock {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor, BlockPos fromPos, boolean moving) {
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor, BlockPos fromPos, boolean moving) {
         if (!level.isClientSide && level.getBlockEntity(pos) instanceof DuctBlockEntity be) be.requestScan();
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moving) {
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moving) {
         if (!state.is(newState.getBlock())) {
             if (!level.isClientSide && level.getBlockEntity(pos) instanceof DuctBlockEntity be) be.dropContents();
         }
@@ -211,12 +231,12 @@ public class DuctBlock extends BaseEntityBlock {
     // ------------------------------------------------------------------ misc block properties
 
     @Override
-    public RenderShape getRenderShape(BlockState state) {
+    protected RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;
     }
 
     @Override
-    public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
         return true;
     }
 

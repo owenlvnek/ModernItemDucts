@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    [
+      {
+        "item": "modernitemducts:item_filter_copper"
+      }
+    ],
+    {
+      "item": "minecraft:iron_ingot"
+    }
+  ],
+  "result": {
+    "id": "modernitemducts:item_filter_iron",
+    "count": 1
+  }
+}

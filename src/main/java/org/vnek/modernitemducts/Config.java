@@ -1,20 +1,20 @@
 package org.vnek.modernitemducts;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import org.vnek.modernitemducts.attachment.RedstoneMode;
 
 /** Common (startup) configuration. */
 public final class Config {
     public enum HomelessBehavior { DROP, VOID }
 
-    public static final ForgeConfigSpec SPEC;
-    public static final ForgeConfigSpec.EnumValue<RedstoneMode> DEFAULT_REDSTONE_MODE;
-    public static final ForgeConfigSpec.EnumValue<HomelessBehavior> HOMELESS_BEHAVIOR;
-    public static final ForgeConfigSpec.IntValue ROUTE_BUDGET_MICROS;
-    public static final ForgeConfigSpec.BooleanValue PREVENT_SOURCE_LOOP;
+    public static final ModConfigSpec SPEC;
+    public static final ModConfigSpec.EnumValue<RedstoneMode> DEFAULT_REDSTONE_MODE;
+    public static final ModConfigSpec.EnumValue<HomelessBehavior> HOMELESS_BEHAVIOR;
+    public static final ModConfigSpec.IntValue ROUTE_BUDGET_MICROS;
+    public static final ModConfigSpec.BooleanValue PREVENT_SOURCE_LOOP;
 
     static {
-        ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder b = new ModConfigSpec.Builder();
         DEFAULT_REDSTONE_MODE = b.comment(
                         "Redstone mode given to newly placed servos and retrievers.",
                         "HIGH (default, same as the classic behaviour) = only work while powered,",

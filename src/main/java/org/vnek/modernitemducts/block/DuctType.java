@@ -1,7 +1,10 @@
 package org.vnek.modernitemducts.block;
 
+import com.mojang.serialization.Codec;
+import net.minecraft.util.StringRepresentable;
+
 /** The four duct blocks: standard / fast, each transparent or opaque. */
-public enum DuctType {
+public enum DuctType implements StringRepresentable {
     STANDARD("item_duct", 40, false),
     STANDARD_OPAQUE("item_duct_opaque", 40, true),
     FAST("fast_item_duct", 10, false),
@@ -12,6 +15,13 @@ public enum DuctType {
     public final int segmentLength;
     /** Opaque ducts never render or sync their packets. */
     public final boolean opaque;
+
+    public static final Codec<DuctType> CODEC = StringRepresentable.fromEnum(DuctType::values);
+
+    @Override
+    public String getSerializedName() {
+        return id;
+    }
 
     DuctType(String id, int segmentLength, boolean opaque) {
         this.id = id;

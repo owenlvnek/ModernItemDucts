@@ -24,11 +24,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraft.core.HolderLookup;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.vnek.modernitemducts.Config;
 import org.vnek.modernitemducts.Registration;
 import org.vnek.modernitemducts.attachment.Attachment;
@@ -74,8 +73,8 @@ public class DuctBlockEntity extends BlockEntity {
     private boolean pushGuard;
     @Nullable private VoxelShape attachmentShape;
 
-    @SuppressWarnings("unchecked")
-    private final LazyOptional<IItemHandler>[] caps = new LazyOptional[6];
+    /** One external-push handler per face; only exposed on visually connected faces (handlerFor). */
+    private final FaceHandler[] handlers = new FaceHandler[6];
 
     // client-only view
     public final List<ClientPacket> clientPackets = new ArrayList<>();
@@ -85,7 +84,7 @@ public class DuctBlockEntity extends BlockEntity {
     public DuctBlockEntity(BlockPos pos, BlockState state) {
         super(Registration.DUCT_BE.get(), pos, state);
         Arrays.fill(conn, ConnectionType.NONE);
-        for (Direction d : Direction.values()) caps[d.ordinal()] = LazyOptional.of(() -> new FaceHandler(d));
+        for (Direction d : Direction.values()) handlers[d.ordinal()] = new FaceHandler(d);
     }
 
     // ================================================================== basic accessors
@@ -183,9 +182,8 @@ public class DuctBlockEntity extends BlockEntity {
         if (level == null) return null;
         BlockPos np = neighborPos(d);
         if (!level.hasChunkAt(np)) return null;
-        BlockEntity be = level.getBlockEntity(np);
-        if (be == null || be instanceof DuctBlockEntity) return null;
-        return be.getCapability(ForgeCapabilities.ITEM_HANDLER, d.getOpposite()).resolve().orElse(null);
+        if (level.getBlockEntity(np) instanceof DuctBlockEntity) return null;
+        return level.getCapability(Capabilities.ItemHandler.BLOCK, np, d.getOpposite());
     }
 
     /** Neighbour duct linked on face d that belongs to {@code net}. */
@@ -236,12 +234,6 @@ public class DuctBlockEntity extends BlockEntity {
     public void onChunkUnloaded() {
         super.onChunkUnloaded();
         if (manager != null) manager.remove(this);
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        for (LazyOptional<IItemHandler> c : caps) c.invalidate();
     }
 
     public void requestScan() {
@@ -310,7 +302,7 @@ public class DuctBlockEntity extends BlockEntity {
             if (be instanceof DuctBlockEntity other) {
                 Direction o = d.getOpposite();
                 if (!other.isRemoved() && !other.isBlocked(o) && !isServo(d) && !other.isServo(o)) next[i] = ConnectionType.DUCT;
-            } else if (be != null && be.getCapability(ForgeCapabilities.ITEM_HANDLER, d.getOpposite()).isPresent()) {
+            } else if (level.getCapability(Capabilities.ItemHandler.BLOCK, np, d.getOpposite()) != null) {
                 next[i] = isServo(d) ? ConnectionType.INPUT : ConnectionType.INVENTORY;
             }
         }
@@ -327,6 +319,7 @@ public class DuctBlockEntity extends BlockEntity {
         if (!Arrays.equals(next, conn)) {
             System.arraycopy(next, 0, conn, 0, 6);
             invalidateNetwork();
+            level.invalidateCapabilities(worldPosition); // our exposed faces changed
             for (Direction d : Direction.values()) {
                 if (level.hasChunkAt(neighborPos(d)) && level.getBlockEntity(neighborPos(d)) instanceof DuctBlockEntity nb) nb.requestScan();
             }
@@ -789,52 +782,50 @@ public class DuctBlockEntity extends BlockEntity {
         return stack.copyWithCount(stack.getCount() - sel.amount());
     }
 
-    @Override
-    public <T> @Nonnull LazyOptional<T> getCapability(@Nonnull Capability<T> cap, @Nullable Direction side) {
-        if (cap == ForgeCapabilities.ITEM_HANDLER && side != null && !remove) {
-            if (conn[side.ordinal()].isInventoryLike()) return caps[side.ordinal()].cast();
-            return LazyOptional.empty();
-        }
-        return super.getCapability(cap, side);
+    /** Item handler capability (registered in ModernItemDucts#registerCapabilities). */
+    @Nullable
+    public IItemHandler handlerFor(@Nullable Direction side) {
+        if (side == null || isRemoved() || !conn[side.ordinal()].isInventoryLike()) return null;
+        return handlers[side.ordinal()];
     }
 
     // ================================================================== persistence (spec §15)
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         tag.putByte("Blocked", (byte) blockedMask);
         ListTag atts = new ListTag();
         for (Direction d : Direction.values()) {
             Attachment a = attachments[d.ordinal()];
             if (a == null) continue;
-            CompoundTag t = a.save();
+            CompoundTag t = a.save(registries);
             t.putByte("Face", (byte) d.ordinal());
             atts.add(t);
         }
         tag.put("Attachments", atts);
         ListTag ps = new ListTag();
-        forEachPacket(p -> ps.add(p.save()));
+        forEachPacket(p -> ps.add(p.save(registries)));
         tag.put("Packets", ps);
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         blockedMask = tag.getByte("Blocked") & 0x3F;
         Arrays.fill(attachments, null);
         ListTag atts = tag.getList("Attachments", Tag.TAG_COMPOUND);
         for (int i = 0; i < atts.size(); i++) {
             CompoundTag t = atts.getCompound(i);
             int face = t.getByte("Face");
-            if (face >= 0 && face < 6) attachments[face] = Attachment.load(t);
+            if (face >= 0 && face < 6) attachments[face] = Attachment.load(t, registries);
         }
         attachmentShape = null;
         packets.clear();
         incoming.clear();
         ListTag ps = tag.getList("Packets", Tag.TAG_COMPOUND);
         for (int i = 0; i < ps.size(); i++) {
-            org.vnek.modernitemducts.network.Packet p = org.vnek.modernitemducts.network.Packet.load(ps.getCompound(i));
+            org.vnek.modernitemducts.network.Packet p = org.vnek.modernitemducts.network.Packet.load(ps.getCompound(i), registries);
             if (p != null) packets.add(p);
         }
         age = 0; // loaded from disk: grace period before giving up on homeless packets
@@ -847,7 +838,7 @@ public class DuctBlockEntity extends BlockEntity {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
         ListTag atts = new ListTag();
         for (Direction d : Direction.values()) {
@@ -868,7 +859,7 @@ public class DuctBlockEntity extends BlockEntity {
                 if (ps.size() >= CLIENT_PACKET_CAP) break;
                 if (p.dir == null) continue;
                 CompoundTag t = new CompoundTag();
-                t.put("I", p.stack.copyWithCount(1).save(new CompoundTag()));
+                t.put("I", p.stack.copyWithCount(1).save(registries));
                 t.putShort("P", (short) p.progress);
                 t.putByte("D", (byte) p.dir.ordinal());
                 t.putByte("S", (byte) p.speed);
@@ -885,17 +876,16 @@ public class DuctBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void handleUpdateTag(CompoundTag tag) {
-        readClient(tag);
+    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
+        readClient(tag, registries);
     }
 
     @Override
-    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
-        CompoundTag tag = pkt.getTag();
-        if (tag != null) readClient(tag);
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
+        readClient(pkt.getTag(), registries);
     }
 
-    private void readClient(CompoundTag tag) {
+    private void readClient(CompoundTag tag, HolderLookup.Provider registries) {
         Arrays.fill(attachments, null);
         Arrays.fill(clientActive, false);
         Arrays.fill(clientClogged, false);
@@ -914,14 +904,14 @@ public class DuctBlockEntity extends BlockEntity {
         ListTag ps = tag.getList("P", Tag.TAG_COMPOUND);
         for (int i = 0; i < ps.size(); i++) {
             CompoundTag t = ps.getCompound(i);
-            ItemStack s = ItemStack.of(t.getCompound("I"));
+            ItemStack s = ItemStack.parseOptional(registries, t.getCompound("I"));
             if (s.isEmpty()) continue;
             clientPackets.add(new ClientPacket(s, t.getShort("P"), Direction.from3DDataValue(t.getByte("D")), t.getByte("S"), now));
         }
     }
 
-    @Override
-    public AABB getRenderBoundingBox() {
+    /** Packets are drawn up to one block beyond the duct (used by DuctRenderer#getRenderBoundingBox). */
+    public AABB renderBounds() {
         return new AABB(worldPosition).inflate(1);
     }
 

@@ -8,11 +8,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.common.extensions.IForgeMenuType;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import org.vnek.modernitemducts.attachment.AttachmentKind;
 import org.vnek.modernitemducts.attachment.Tier;
 import org.vnek.modernitemducts.block.DuctBlock;
@@ -29,24 +28,24 @@ import java.util.Map;
 
 /** All registry objects. */
 public final class Registration {
-    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, ModernItemDucts.MODID);
-    private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, ModernItemDucts.MODID);
-    private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, ModernItemDucts.MODID);
-    private static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, ModernItemDucts.MODID);
+    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(Registries.BLOCK, ModernItemDucts.MODID);
+    private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(Registries.ITEM, ModernItemDucts.MODID);
+    private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, ModernItemDucts.MODID);
+    private static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, ModernItemDucts.MODID);
     private static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, ModernItemDucts.MODID);
 
-    public static final Map<DuctType, RegistryObject<DuctBlock>> DUCTS = new EnumMap<>(DuctType.class);
-    public static final Map<DuctType, RegistryObject<DuctBlockItem>> DUCT_ITEMS = new EnumMap<>(DuctType.class);
-    public static final Map<AttachmentKind, Map<Tier, RegistryObject<AttachmentItem>>> ATTACHMENTS = new EnumMap<>(AttachmentKind.class);
+    public static final Map<DuctType, DeferredHolder<Block, DuctBlock>> DUCTS = new EnumMap<>(DuctType.class);
+    public static final Map<DuctType, DeferredHolder<Item, DuctBlockItem>> DUCT_ITEMS = new EnumMap<>(DuctType.class);
+    public static final Map<AttachmentKind, Map<Tier, DeferredHolder<Item, AttachmentItem>>> ATTACHMENTS = new EnumMap<>(AttachmentKind.class);
 
     static {
         for (DuctType type : DuctType.values()) {
-            RegistryObject<DuctBlock> block = BLOCKS.register(type.id, () -> new DuctBlock(type));
+            DeferredHolder<Block, DuctBlock> block = BLOCKS.register(type.id, () -> new DuctBlock(type));
             DUCTS.put(type, block);
             DUCT_ITEMS.put(type, ITEMS.register(type.id, () -> new DuctBlockItem(block.get(), new Item.Properties())));
         }
         for (AttachmentKind kind : AttachmentKind.values()) {
-            Map<Tier, RegistryObject<AttachmentItem>> byTier = new EnumMap<>(Tier.class);
+            Map<Tier, DeferredHolder<Item, AttachmentItem>> byTier = new EnumMap<>(Tier.class);
             for (Tier tier : Tier.values()) {
                 byTier.put(tier, ITEMS.register("item_" + kind.name + "_" + tier.material,
                         () -> new AttachmentItem(kind, tier, new Item.Properties().rarity(tier.rarity))));
@@ -55,17 +54,17 @@ public final class Registration {
         }
     }
 
-    public static final RegistryObject<WrenchItem> WRENCH = ITEMS.register("duct_wrench", () -> new WrenchItem(new Item.Properties().stacksTo(1)));
+    public static final DeferredHolder<Item, WrenchItem> WRENCH = ITEMS.register("duct_wrench", () -> new WrenchItem(new Item.Properties().stacksTo(1)));
 
     @SuppressWarnings("ConstantConditions")
-    public static final RegistryObject<BlockEntityType<DuctBlockEntity>> DUCT_BE = BLOCK_ENTITIES.register("item_duct",
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DuctBlockEntity>> DUCT_BE = BLOCK_ENTITIES.register("item_duct",
             () -> BlockEntityType.Builder.of(DuctBlockEntity::new,
-                    DUCTS.values().stream().map(RegistryObject::get).toArray(Block[]::new)).build(null));
+                    DUCTS.values().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
 
-    public static final RegistryObject<MenuType<AttachmentMenu>> ATTACHMENT_MENU = MENUS.register("attachment",
-            () -> IForgeMenuType.create(AttachmentMenu::fromNetwork));
+    public static final DeferredHolder<MenuType<?>, MenuType<AttachmentMenu>> ATTACHMENT_MENU = MENUS.register("attachment",
+            () -> IMenuTypeExtension.create(AttachmentMenu::fromNetwork));
 
-    public static final RegistryObject<CreativeModeTab> TAB = TABS.register("main", () -> CreativeModeTab.builder()
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("main", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.modernitemducts"))
             .icon(() -> new ItemStack(DUCT_ITEMS.get(DuctType.FAST).get()))
             .displayItems((params, out) -> {

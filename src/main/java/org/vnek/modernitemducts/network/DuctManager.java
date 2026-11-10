@@ -4,9 +4,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.level.LevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.vnek.modernitemducts.Config;
 import org.vnek.modernitemducts.block.DuctBlockEntity;
 
@@ -191,8 +191,8 @@ public final class DuctManager {
     /** Forge event hooks (registered on the game bus). */
     public static final class Events {
         @SubscribeEvent
-        public static void onLevelTick(TickEvent.LevelTickEvent event) {
-            if (event.phase == TickEvent.Phase.END && event.level instanceof ServerLevel sl) {
+        public static void onLevelTick(LevelTickEvent.Post event) {
+            if (event.getLevel() instanceof ServerLevel sl) {
                 DuctManager m = MANAGERS.get(sl);
                 if (m != null) m.tick();
             }

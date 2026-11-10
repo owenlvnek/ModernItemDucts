@@ -25,10 +25,10 @@ public class WrenchItem extends Item {
     public static final TagKey<Item> OWN_TAG = TagKey.create(Registries.ITEM, ModernItemDucts.id("wrenches"));
     /** Common community conventions (read-only; we never depend on another mod). */
     private static final List<TagKey<Item>> COMMON_TAGS = List.of(
-            TagKey.create(Registries.ITEM, new ResourceLocation("forge", "tools/wrench")),
-            TagKey.create(Registries.ITEM, new ResourceLocation("forge", "wrenches")),
-            TagKey.create(Registries.ITEM, new ResourceLocation("c", "wrenches")),
-            TagKey.create(Registries.ITEM, new ResourceLocation("c", "tools/wrench")));
+            TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("forge", "tools/wrench")),
+            TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("forge", "wrenches")),
+            TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "wrenches")),
+            TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "tools/wrench")));
 
     public WrenchItem(Properties props) {
         super(props);
@@ -48,7 +48,7 @@ public class WrenchItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.modernitemducts.wrench").withStyle(net.minecraft.ChatFormatting.GRAY));
     }
 }

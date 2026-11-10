@@ -3,8 +3,8 @@ package org.vnek.modernitemducts.network;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.vnek.modernitemducts.attachment.Attachment;
 import org.vnek.modernitemducts.attachment.AttachmentKind;
 import org.vnek.modernitemducts.attachment.SortMode;
@@ -29,6 +29,11 @@ public final class Routing {
     private Routing() {}
 
     public record Selection(Destination dest, int amount) {}
+
+    /** Same item and same data components (what used to be "same item and NBT"). */
+    public static boolean stackable(ItemStack a, ItemStack b) {
+        return !a.isEmpty() && !b.isEmpty() && ItemStack.isSameItemSameComponents(a, b);
+    }
 
     // ------------------------------------------------------------------ ordering (§6.3)
 
@@ -98,7 +103,7 @@ public final class Routing {
         int maxStock = att == null ? 0 : att.maxStock();
         if (maxStock > 0) {
             int present = countIdentical(handler, stack);
-            for (ItemStack t : transit) if (ItemHandlerHelper.canItemStacksStack(t, stack)) present += t.getCount();
+            for (ItemStack t : transit) if (Routing.stackable(t, stack)) present += t.getCount();
             limit = Math.min(limit, maxStock - present);
             if (limit <= 0) return 0;
         }
@@ -122,7 +127,7 @@ public final class Routing {
         int n = 0;
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack s = handler.getStackInSlot(i);
-            if (ItemHandlerHelper.canItemStacksStack(s, stack)) n += s.getCount();
+            if (Routing.stackable(s, stack)) n += s.getCount();
         }
         return n;
     }
@@ -138,7 +143,7 @@ public final class Routing {
         for (int i = 0; i < slots; i++) scratch[i] = handler.getStackInSlot(i).copy();
         for (ItemStack t : transit) {
             int rem = scratchInsert(handler, scratch, t.copy());
-            if (rem > 0 && ItemHandlerHelper.canItemStacksStack(t, stack)) return 0;
+            if (rem > 0 && Routing.stackable(t, stack)) return 0;
         }
         return stack.getCount() - scratchInsert(handler, scratch, stack.copy());
     }
@@ -152,7 +157,7 @@ public final class Routing {
                 int put = Math.min(stack.getCount(), Math.min(handler.getSlotLimit(i), stack.getMaxStackSize()));
                 scratch[i] = stack.copyWithCount(put);
                 stack.shrink(put);
-            } else if (ItemHandlerHelper.canItemStacksStack(s, stack)) {
+            } else if (Routing.stackable(s, stack)) {
                 int space = Math.min(handler.getSlotLimit(i), s.getMaxStackSize()) - s.getCount();
                 if (space <= 0) continue;
                 int put = Math.min(space, stack.getCount());
@@ -190,11 +195,11 @@ public final class Routing {
     public static ItemStack extract(IItemHandler handler, int slot, ItemStack template, int amount, boolean multiSlot) {
         ItemStack got = handler.extractItem(slot, amount, false);
         if (got.isEmpty()) return ItemStack.EMPTY;
-        if (!ItemHandlerHelper.canItemStacksStack(got, template)) return got;
+        if (!Routing.stackable(got, template)) return got;
         for (int j = slot + 1; multiSlot && j < handler.getSlots() && got.getCount() < amount; j++) {
-            if (!ItemHandlerHelper.canItemStacksStack(handler.getStackInSlot(j), got)) continue;
+            if (!Routing.stackable(handler.getStackInSlot(j), got)) continue;
             ItemStack more = handler.extractItem(j, amount - got.getCount(), false);
-            if (ItemHandlerHelper.canItemStacksStack(more, got)) got.grow(more.getCount());
+            if (Routing.stackable(more, got)) got.grow(more.getCount());
             else if (!more.isEmpty()) handler.insertItem(j, more, false); // should not happen; put it back
         }
         return got;

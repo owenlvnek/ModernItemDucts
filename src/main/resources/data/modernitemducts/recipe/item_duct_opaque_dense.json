@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "modernitemducts:item_duct_opaque"
+    },
+    {
+      "item": "minecraft:iron_nugget"
+    },
+    {
+      "item": "minecraft:iron_nugget"
+    },
+    {
+      "item": "minecraft:iron_nugget"
+    }
+  ],
+  "result": {
+    "id": "modernitemducts:item_duct_opaque",
+    "count": 1,
+    "components": {
+      "minecraft:block_state": {
+        "weight": "dense"
+      }
+    }
+  }
+}

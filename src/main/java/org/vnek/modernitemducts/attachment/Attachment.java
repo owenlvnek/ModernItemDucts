@@ -1,10 +1,11 @@
 package org.vnek.modernitemducts.attachment;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.ItemHandlerHelper;
+import org.vnek.modernitemducts.network.Routing;
 import org.vnek.modernitemducts.Config;
 import org.vnek.modernitemducts.Registration;
 
@@ -92,7 +93,7 @@ public class Attachment {
     public void addBacklog(ItemStack stack) {
         if (stack.isEmpty()) return;
         for (BacklogEntry e : backlog) {
-            if (ItemHandlerHelper.canItemStacksStack(e.template, stack)) {
+            if (Routing.stackable(e.template, stack)) {
                 e.count = (int) Math.min(Integer.MAX_VALUE, (long) e.count + stack.getCount());
                 return;
             }
@@ -122,11 +123,11 @@ public class Attachment {
 
     // ------------------------------------------------------------------ persistence
 
-    public CompoundTag save() {
+    public CompoundTag save(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
         tag.putByte("Kind", (byte) kind.ordinal());
         tag.putByte("Tier", (byte) tier.ordinal());
-        tag.put("Filter", filter.save());
+        tag.put("Filter", filter.save(registries));
         tag.putInt("MaxPerOp", maxPerOp);
         tag.putInt("MaxStock", maxStock);
         tag.putByte("Sort", (byte) sortMode.ordinal());
@@ -137,7 +138,7 @@ public class Attachment {
         if (!backlog.isEmpty()) {
             ListTag list = new ListTag();
             for (BacklogEntry e : backlog) {
-                CompoundTag t = e.template.save(new CompoundTag());
+                CompoundTag t = (CompoundTag) e.template.copyWithCount(1).save(registries);
                 t.putInt("Amount", e.count);
                 list.add(t);
             }
@@ -146,9 +147,9 @@ public class Attachment {
         return tag;
     }
 
-    public static Attachment load(CompoundTag tag) {
+    public static Attachment load(CompoundTag tag, HolderLookup.Provider registries) {
         Attachment a = new Attachment(AttachmentKind.byId(tag.getByte("Kind")), Tier.byId(tag.getByte("Tier")));
-        a.filter.load(tag.getCompound("Filter"));
+        a.filter.load(tag.getCompound("Filter"), registries);
         a.setMaxPerOp(tag.contains("MaxPerOp") ? tag.getInt("MaxPerOp") : a.tier.maxItems);
         a.setMaxStock(tag.getInt("MaxStock"));
         a.setSortMode(SortMode.byId(tag.getByte("Sort")));
@@ -159,7 +160,7 @@ public class Attachment {
         ListTag list = tag.getList("Backlog", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag t = list.getCompound(i);
-            ItemStack s = ItemStack.of(t);
+            ItemStack s = ItemStack.parseOptional(registries, t);
             int amount = t.getInt("Amount");
             if (!s.isEmpty() && amount > 0) a.backlog.add(new BacklogEntry(s.copyWithCount(1), amount));
         }

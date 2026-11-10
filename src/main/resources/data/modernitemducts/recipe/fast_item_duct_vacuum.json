@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "modernitemducts:fast_item_duct"
+    },
+    {
+      "item": "minecraft:gold_nugget"
+    },
+    {
+      "item": "minecraft:gold_nugget"
+    },
+    {
+      "item": "minecraft:gold_nugget"
+    }
+  ],
+  "result": {
+    "id": "modernitemducts:fast_item_duct",
+    "count": 1,
+    "components": {
+      "minecraft:block_state": {
+        "weight": "vacuum"
+      }
+    }
+  }
+}

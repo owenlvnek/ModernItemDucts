@@ -702,7 +702,7 @@ def gen_duct(block_id, family, opaque):
         write_json(os.path.join(ASSETS, "models", "item", f"{name}.json"), model)
 
     # loot table keeps the routing weight
-    write_json(os.path.join(DATA, "loot_tables", "blocks", f"{block_id}.json"), {
+    write_json(os.path.join(DATA, "loot_table", "blocks", f"{block_id}.json"), {
         "type": "minecraft:block",
         "pools": [{
             "rolls": 1, "bonus_rolls": 0,
@@ -777,20 +777,20 @@ def gen_attachments():
 
 # ----------------------------------------------------------------------------- recipes
 
-def shaped(name, pattern, key, result, count=1, nbt=None):
-    res = {"item": result, "count": count}
-    if nbt:
-        res["nbt"] = nbt
-    write_json(os.path.join(DATA, "recipes", f"{name}.json"), {
+def shaped(name, pattern, key, result, count=1, components=None):
+    res = {"id": result, "count": count}
+    if components:
+        res["components"] = components
+    write_json(os.path.join(DATA, "recipe", f"{name}.json"), {
         "type": "minecraft:crafting_shaped", "category": "misc", "pattern": pattern,
         "key": {k: ({"item": v} if isinstance(v, str) else v) for k, v in key.items()}, "result": res})
 
 
-def shapeless(name, ingredients, result, count=1, nbt=None):
-    res = {"item": result, "count": count}
-    if nbt:
-        res["nbt"] = nbt
-    write_json(os.path.join(DATA, "recipes", f"{name}.json"), {
+def shapeless(name, ingredients, result, count=1, components=None):
+    res = {"id": result, "count": count}
+    if components:
+        res["components"] = components
+    write_json(os.path.join(DATA, "recipe", f"{name}.json"), {
         "type": "minecraft:crafting_shapeless", "category": "misc",
         "ingredients": [({"item": i} if isinstance(i, str) else i) for i in ingredients], "result": res})
 
@@ -808,8 +808,8 @@ def gen_recipes():
     shapeless("fast_item_duct_opaque_from_clear", [m + "fast_item_duct"] * 6 + ["minecraft:iron_ingot"],
               m + "fast_item_duct_opaque", 6)
     for d in DUCTS:
-        shapeless(f"{d}_dense", [m + d] + ["minecraft:iron_nugget"] * 3, m + d, 1, nbt='{BlockStateTag:{weight:"dense"}}')
-        shapeless(f"{d}_vacuum", [m + d] + ["minecraft:gold_nugget"] * 3, m + d, 1, nbt='{BlockStateTag:{weight:"vacuum"}}')
+        shapeless(f"{d}_dense", [m + d] + ["minecraft:iron_nugget"] * 3, m + d, 1, components={"minecraft:block_state": {"weight": "dense"}})
+        shapeless(f"{d}_vacuum", [m + d] + ["minecraft:gold_nugget"] * 3, m + d, 1, components={"minecraft:block_state": {"weight": "vacuum"}})
         shapeless(f"{d}_normal", [m + d, "minecraft:water_bucket"], m + d, 1)
     shaped("duct_wrench", ["I I", " C ", " I "], {"I": "minecraft:iron_ingot", "C": "minecraft:copper_ingot"}, m + "duct_wrench")
     for kind in KINDS:
@@ -825,10 +825,12 @@ def gen_recipes():
 # ----------------------------------------------------------------------------- tags
 
 def gen_tags():
-    write_json(os.path.join(DATA, "tags", "items", "wrenches.json"), {"replace": False, "values": [f"{MODID}:duct_wrench"]})
-    write_json(os.path.join(ROOT, "data", "forge", "tags", "items", "tools", "wrench.json"),
+    write_json(os.path.join(DATA, "tags", "item", "wrenches.json"), {"replace": False, "values": [f"{MODID}:duct_wrench"]})
+    write_json(os.path.join(ROOT, "data", "c", "tags", "item", "tools", "wrench.json"),
                {"replace": False, "values": [f"{MODID}:duct_wrench"]})
-    write_json(os.path.join(ROOT, "data", "minecraft", "tags", "blocks", "mineable", "pickaxe.json"),
+    write_json(os.path.join(ROOT, "data", "forge", "tags", "item", "tools", "wrench.json"),
+               {"replace": False, "values": [f"{MODID}:duct_wrench"]})
+    write_json(os.path.join(ROOT, "data", "minecraft", "tags", "block", "mineable", "pickaxe.json"),
                {"replace": False, "values": [f"{MODID}:{d}" for d in DUCTS]})
 
 
@@ -921,14 +923,14 @@ def gen_structure(name, sx, sy, sz):
                 pos = list_payload(3, [nbt_int(x), nbt_int(y), nbt_int(z)])
                 blocks.append(compound_payload([tag(9, "pos", pos), tag(3, "state", nbt_int(0 if y == 0 else 1))]))
     root = compound_payload([
-        tag(3, "DataVersion", nbt_int(3465)),
+        tag(3, "DataVersion", nbt_int(3955)),
         tag(9, "size", list_payload(3, [nbt_int(sx), nbt_int(sy), nbt_int(sz)])),
         tag(9, "palette", list_payload(10, palette)),
         tag(9, "blocks", list_payload(10, blocks)),
         tag(9, "entities", list_payload(10, [])),
     ])
     data = bytes([10]) + nbt_string("") + root
-    path = os.path.join(DATA, "structures", f"{name}.nbt")
+    path = os.path.join(DATA, "structure", f"{name}.nbt")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     buf = io.BytesIO()
     with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:

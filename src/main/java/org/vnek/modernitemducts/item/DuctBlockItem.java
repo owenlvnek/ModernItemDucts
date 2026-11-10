@@ -1,7 +1,8 @@
 package org.vnek.modernitemducts.item;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.BlockItemStateProperties;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -16,7 +17,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * Duct block item. The routing weight travels in the vanilla {@code BlockStateTag}, so vanilla
+ * Duct block item. The routing weight travels in the vanilla {@code minecraft:block_state} component, so vanilla
  * placement applies it and the loot table's {@code copy_state} function puts it back on the drop.
  */
 public class DuctBlockItem extends BlockItem {
@@ -27,19 +28,16 @@ public class DuctBlockItem extends BlockItem {
     public static ItemStack withWeight(Item item, DuctWeight weight) {
         ItemStack stack = new ItemStack(item);
         if (weight != DuctWeight.NORMAL) {
-            CompoundTag state = new CompoundTag();
-            state.putString(DuctBlock.WEIGHT.getName(), weight.getSerializedName());
-            stack.getOrCreateTag().put(BLOCK_STATE_TAG, state);
+            stack.set(DataComponents.BLOCK_STATE, BlockItemStateProperties.EMPTY.with(DuctBlock.WEIGHT, weight));
         }
         return stack;
     }
 
     public static DuctWeight weightOf(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-        if (tag == null) return DuctWeight.NORMAL;
-        String s = tag.getCompound(BLOCK_STATE_TAG).getString(DuctBlock.WEIGHT.getName());
-        for (DuctWeight w : DuctWeight.values()) if (w.getSerializedName().equals(s)) return w;
-        return DuctWeight.NORMAL;
+        BlockItemStateProperties props = stack.get(DataComponents.BLOCK_STATE);
+        if (props == null) return DuctWeight.NORMAL;
+        DuctWeight w = props.get(DuctBlock.WEIGHT);
+        return w == null ? DuctWeight.NORMAL : w;
     }
 
     @Override
@@ -50,7 +48,7 @@ public class DuctBlockItem extends BlockItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.modernitemducts.duct." + weightOf(stack).getSerializedName())
                 .withStyle(ChatFormatting.GRAY));
     }

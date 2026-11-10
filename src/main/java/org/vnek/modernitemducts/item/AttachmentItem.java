@@ -59,7 +59,7 @@ public class AttachmentItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.modernitemducts." + kind.name).withStyle(ChatFormatting.GRAY));
         if (kind.isActive()) {
             tooltip.add(Component.translatable("tooltip.modernitemducts.stats",

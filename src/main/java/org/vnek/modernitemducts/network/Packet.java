@@ -1,9 +1,9 @@
 package org.vnek.modernitemducts.network;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
@@ -71,19 +71,19 @@ public class Packet {
         return destPos.relative(destFace);
     }
 
-    public CompoundTag save() {
+    public CompoundTag save(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
-        tag.put("Item", stack.save(new CompoundTag()));
-        tag.putInt("Count", stack.getCount()); // ItemStack saves its count as a byte; keep the real one
+        tag.put("Item", stack.copyWithCount(1).save(registries));
+        tag.putInt("Count", stack.getCount());
         tag.putInt("Progress", progress);
         tag.putByte("Dir", (byte) (dir == null ? -1 : dir.ordinal()));
         tag.putByte("PrevDir", (byte) (prevDir == null ? -1 : prevDir.ordinal()));
         tag.putByte("Speed", (byte) speed);
         if (destPos != null && destFace != null) {
-            tag.put("Dest", NbtUtils.writeBlockPos(destPos));
+            tag.putLong("Dest", destPos.asLong());
             tag.putByte("DestFace", (byte) destFace.ordinal());
         }
-        if (sourcePos != null) tag.put("Source", NbtUtils.writeBlockPos(sourcePos));
+        if (sourcePos != null) tag.putLong("Source", sourcePos.asLong());
         byte[] rest = new byte[Math.max(0, path.length - pathIndex)];
         System.arraycopy(path, pathIndex, rest, 0, rest.length);
         tag.putByteArray("Path", rest);
@@ -93,8 +93,8 @@ public class Packet {
     }
 
     @Nullable
-    public static Packet load(CompoundTag tag) {
-        ItemStack stack = ItemStack.of(tag.getCompound("Item"));
+    public static Packet load(CompoundTag tag, HolderLookup.Provider registries) {
+        ItemStack stack = ItemStack.parseOptional(registries, tag.getCompound("Item"));
         if (stack.isEmpty()) return null;
         if (tag.contains("Count")) stack.setCount(tag.getInt("Count"));
         if (stack.isEmpty()) return null;
@@ -104,10 +104,10 @@ public class Packet {
         p.dir = dirOrNull(tag.getByte("Dir"));
         p.prevDir = dirOrNull(tag.getByte("PrevDir"));
         if (tag.contains("Dest")) {
-            p.destPos = NbtUtils.readBlockPos(tag.getCompound("Dest"));
+            p.destPos = BlockPos.of(tag.getLong("Dest"));
             p.destFace = dirOrNull(tag.getByte("DestFace"));
         }
-        if (tag.contains("Source")) p.sourcePos = NbtUtils.readBlockPos(tag.getCompound("Source"));
+        if (tag.contains("Source")) p.sourcePos = BlockPos.of(tag.getLong("Source"));
         byte[] raw = tag.getByteArray("Path");
         for (byte b : raw) if (b < 0 || b > 5) { raw = new byte[0]; p.needsReroute = true; break; }
         p.path = raw;
