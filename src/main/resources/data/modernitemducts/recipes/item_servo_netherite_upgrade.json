@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    [
+      {
+        "item": "modernitemducts:item_servo_copper"
+      },
+      {
+        "item": "modernitemducts:item_servo_iron"
+      },
+      {
+        "item": "modernitemducts:item_servo_gold"
+      },
+      {
+        "item": "modernitemducts:item_servo_diamond"
+      }
+    ],
+    {
+      "item": "minecraft:netherite_ingot"
+    }
+  ],
+  "result": {
+    "item": "modernitemducts:item_servo_netherite",
+    "count": 1
+  }
+}

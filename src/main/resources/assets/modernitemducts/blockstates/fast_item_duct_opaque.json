@@ -1,0 +1,134 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "weight": "normal"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_core_normal"
+      }
+    },
+    {
+      "when": {
+        "weight": "dense"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_core_dense"
+      }
+    },
+    {
+      "when": {
+        "weight": "vacuum"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_core_vacuum"
+      }
+    },
+    {
+      "when": {
+        "down": "duct"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "down": "inventory"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm_inventory",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "up": "duct"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "up": "inventory"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm_inventory",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "north": "duct"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm"
+      }
+    },
+    {
+      "when": {
+        "north": "inventory"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm_inventory"
+      }
+    },
+    {
+      "when": {
+        "south": "duct"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "south": "inventory"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm_inventory",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "duct"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "west": "inventory"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm_inventory",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "east": "duct"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "east": "inventory"
+      },
+      "apply": {
+        "model": "modernitemducts:block/fast_item_duct_opaque_arm_inventory",
+        "y": 90
+      }
+    }
+  ]
+}

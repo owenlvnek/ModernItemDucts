@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "modernitemducts:item_duct",
+    "modernitemducts:item_duct_opaque",
+    "modernitemducts:fast_item_duct",
+    "modernitemducts:fast_item_duct_opaque"
+  ]
+}

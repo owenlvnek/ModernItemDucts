@@ -1,0 +1,129 @@
+{
+  "render_type": "minecraft:cutout",
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "modernitemducts:block/item_duct_normal",
+    "arm": "modernitemducts:block/item_duct_normal",
+    "collar": "modernitemducts:block/item_duct_collar"
+  },
+  "elements": [
+    {
+      "from": [
+        5,
+        5,
+        0
+      ],
+      "to": [
+        11,
+        11,
+        5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#arm",
+          "uv": [
+            5,
+            0,
+            11,
+            5
+          ]
+        },
+        "down": {
+          "texture": "#arm",
+          "uv": [
+            5,
+            11,
+            11,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#arm",
+          "uv": [
+            0,
+            5,
+            5,
+            11
+          ]
+        },
+        "east": {
+          "texture": "#arm",
+          "uv": [
+            11,
+            5,
+            16,
+            11
+          ]
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        4,
+        0
+      ],
+      "to": [
+        12,
+        12,
+        4
+      ],
+      "faces": {
+        "down": {
+          "texture": "#collar",
+          "uv": [
+            4,
+            12,
+            12,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#collar",
+          "uv": [
+            4,
+            0,
+            12,
+            4
+          ]
+        },
+        "north": {
+          "texture": "#collar",
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ]
+        },
+        "south": {
+          "texture": "#collar",
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ]
+        },
+        "west": {
+          "texture": "#collar",
+          "uv": [
+            0,
+            4,
+            4,
+            12
+          ]
+        },
+        "east": {
+          "texture": "#collar",
+          "uv": [
+            12,
+            4,
+            16,
+            12
+          ]
+        }
+      }
+    }
+  ]
+}
