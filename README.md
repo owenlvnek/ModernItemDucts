@@ -3,6 +3,8 @@
 A Minecraft **1.20.1 / Forge 47** mod: tiered item ducts with servos, retrievers and filters,
 in the style of the classic 1.12-era item-duct mods. Mod id `modernitemducts`, MIT licensed.
 
+![Item ducts with servos, retrievers and chests](docs/screenshot.png)
+
 ## Provenance
 
 The behaviour was reimplemented clean-room style: the code was written from a plain-language
