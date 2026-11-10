@@ -10,7 +10,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
@@ -143,12 +143,12 @@ public class AttachmentMenu extends AbstractContainerMenu {
     // ------------------------------------------------------------------ ghost slots
 
     @Override
-    public void clicked(int slotId, int button, ClickType type, Player player) {
+    public void clicked(int slotId, int button, ContainerInput type, Player player) {
         if (slotId >= 0 && slotId < filterSlotCount()) {
             Slot slot = slots.get(slotId);
-            if (type == ClickType.QUICK_MOVE) {
+            if (type == ContainerInput.QUICK_MOVE) {
                 slot.set(ItemStack.EMPTY);
-            } else if (type == ClickType.PICKUP) {
+            } else if (type == ContainerInput.PICKUP) {
                 ItemStack carried = getCarried();
                 slot.set(carried.isEmpty() ? ItemStack.EMPTY : carried.copyWithCount(1));
             }

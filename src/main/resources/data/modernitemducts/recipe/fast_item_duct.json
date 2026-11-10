@@ -7,12 +7,8 @@
     "DDD"
   ],
   "key": {
-    "D": {
-      "item": "modernitemducts:item_duct"
-    },
-    "G": {
-      "item": "minecraft:glowstone"
-    }
+    "D": "modernitemducts:item_duct",
+    "G": "minecraft:glowstone"
   },
   "result": {
     "id": "modernitemducts:fast_item_duct",

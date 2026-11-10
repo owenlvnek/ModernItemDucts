@@ -3,8 +3,6 @@ package org.vnek.modernitemducts.network;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.vnek.modernitemducts.attachment.Attachment;
 import org.vnek.modernitemducts.attachment.AttachmentKind;
 import org.vnek.modernitemducts.attachment.SortMode;
@@ -89,7 +87,7 @@ public final class Routing {
      */
     public static int acceptable(DuctNetwork net, DuctBlockEntity duct, Direction face, ItemStack stack, @Nullable Packet self) {
         if (stack.isEmpty() || duct.connection(face) != ConnectionType.INVENTORY) return 0;
-        IItemHandler handler = duct.neighborHandler(face);
+        Inv handler = duct.neighborHandler(face);
         if (handler == null) return 0;
         Attachment att = duct.getAttachment(face);
         Attachment filter = att != null && att.kind == AttachmentKind.FILTER ? att : null;
@@ -110,7 +108,7 @@ public final class Routing {
 
         ItemStack probe = stack.copyWithCount(limit);
         if (transit.isEmpty()) {
-            return limit - ItemHandlerHelper.insertItem(handler, probe, true).getCount();
+            return limit - handler.insert(probe, true).getCount();
         }
         return simulateWithTransit(handler, transit, probe);
     }
@@ -123,7 +121,7 @@ public final class Routing {
         return out;
     }
 
-    public static int countIdentical(IItemHandler handler, ItemStack stack) {
+    public static int countIdentical(Inv handler, ItemStack stack) {
         int n = 0;
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack s = handler.getStackInSlot(i);
@@ -133,39 +131,12 @@ public final class Routing {
     }
 
     /**
-     * Inserts everything already in flight into a scratch copy of the inventory first, then the
-     * new stack. If an identical item already in flight would not fit, the destination is
-     * rejected outright (spec §5.5).
+     * Virtually inserts everything already in flight first, then the new stack, inside a
+     * transaction that is always rolled back. If an identical item already in flight would not
+     * fit, the destination is rejected outright (spec §5.5).
      */
-    private static int simulateWithTransit(IItemHandler handler, List<ItemStack> transit, ItemStack stack) {
-        int slots = handler.getSlots();
-        ItemStack[] scratch = new ItemStack[slots];
-        for (int i = 0; i < slots; i++) scratch[i] = handler.getStackInSlot(i).copy();
-        for (ItemStack t : transit) {
-            int rem = scratchInsert(handler, scratch, t.copy());
-            if (rem > 0 && Routing.stackable(t, stack)) return 0;
-        }
-        return stack.getCount() - scratchInsert(handler, scratch, stack.copy());
-    }
-
-    private static int scratchInsert(IItemHandler handler, ItemStack[] scratch, ItemStack stack) {
-        for (int i = 0; i < scratch.length && !stack.isEmpty(); i++) {
-            ItemStack s = scratch[i];
-            if (s.isEmpty()) {
-                // The real slot is empty too (scratch only ever grows): ask it whether it takes this item.
-                if (!handler.insertItem(i, stack.copyWithCount(1), true).isEmpty()) continue;
-                int put = Math.min(stack.getCount(), Math.min(handler.getSlotLimit(i), stack.getMaxStackSize()));
-                scratch[i] = stack.copyWithCount(put);
-                stack.shrink(put);
-            } else if (Routing.stackable(s, stack)) {
-                int space = Math.min(handler.getSlotLimit(i), s.getMaxStackSize()) - s.getCount();
-                if (space <= 0) continue;
-                int put = Math.min(space, stack.getCount());
-                s.grow(put);
-                stack.shrink(put);
-            }
-        }
-        return stack.getCount();
+    private static int simulateWithTransit(Inv handler, List<ItemStack> transit, ItemStack stack) {
+        return handler.simulateAfter(transit, stack, stack);
     }
 
     // ------------------------------------------------------------------ delivery (§4.3, §4.4)
@@ -175,7 +146,7 @@ public final class Routing {
      * max stock. @return the remainder (empty if everything fit).
      */
     public static ItemStack deliver(DuctBlockEntity duct, Direction face, ItemStack stack) {
-        IItemHandler handler = duct.neighborHandler(face);
+        Inv handler = duct.neighborHandler(face);
         if (handler == null) return stack;
         Attachment att = duct.getAttachment(face);
         if (att != null && att.kind == AttachmentKind.FILTER && !att.filter.passes(stack)) return stack;
@@ -183,7 +154,7 @@ public final class Routing {
         int maxStock = att == null ? 0 : att.maxStock();
         if (maxStock > 0) limit = Math.min(limit, maxStock - countIdentical(handler, stack));
         if (limit <= 0) return stack;
-        ItemStack rem = ItemHandlerHelper.insertItem(handler, stack.copyWithCount(limit), false);
+        ItemStack rem = handler.insert(stack.copyWithCount(limit), false);
         int inserted = limit - rem.getCount();
         return stack.copyWithCount(stack.getCount() - inserted);
     }
@@ -192,7 +163,7 @@ public final class Routing {
      * Extracts {@code amount} items like {@code template} starting at {@code slot}; servos of
      * multi-slot tiers keep pulling identical items from later slots.
      */
-    public static ItemStack extract(IItemHandler handler, int slot, ItemStack template, int amount, boolean multiSlot) {
+    public static ItemStack extract(Inv handler, int slot, ItemStack template, int amount, boolean multiSlot) {
         ItemStack got = handler.extractItem(slot, amount, false);
         if (got.isEmpty()) return ItemStack.EMPTY;
         if (!Routing.stackable(got, template)) return got;
@@ -200,7 +171,7 @@ public final class Routing {
             if (!Routing.stackable(handler.getStackInSlot(j), got)) continue;
             ItemStack more = handler.extractItem(j, amount - got.getCount(), false);
             if (Routing.stackable(more, got)) got.grow(more.getCount());
-            else if (!more.isEmpty()) handler.insertItem(j, more, false); // should not happen; put it back
+            else if (!more.isEmpty()) handler.insert(more, false); // should not happen; put it back
         }
         return got;
     }

@@ -28,8 +28,8 @@ import java.util.Map;
 
 /** All registry objects. */
 public final class Registration {
-    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(Registries.BLOCK, ModernItemDucts.MODID);
-    private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(Registries.ITEM, ModernItemDucts.MODID);
+    private static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(ModernItemDucts.MODID);
+    private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ModernItemDucts.MODID);
     private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, ModernItemDucts.MODID);
     private static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, ModernItemDucts.MODID);
     private static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, ModernItemDucts.MODID);
@@ -40,26 +40,27 @@ public final class Registration {
 
     static {
         for (DuctType type : DuctType.values()) {
-            DeferredHolder<Block, DuctBlock> block = BLOCKS.register(type.id, () -> new DuctBlock(type));
+            // Since 1.21.2 block / item properties carry their registry id; the Blocks/Items registers set it.
+            DeferredHolder<Block, DuctBlock> block = BLOCKS.registerBlock(type.id, p -> new DuctBlock(type, p), DuctBlock::properties);
             DUCTS.put(type, block);
-            DUCT_ITEMS.put(type, ITEMS.register(type.id, () -> new DuctBlockItem(block.get(), new Item.Properties())));
+            DUCT_ITEMS.put(type, ITEMS.registerItem(type.id, p -> new DuctBlockItem(block.get(), p),
+                    p -> p.useBlockDescriptionPrefix()));
         }
         for (AttachmentKind kind : AttachmentKind.values()) {
             Map<Tier, DeferredHolder<Item, AttachmentItem>> byTier = new EnumMap<>(Tier.class);
             for (Tier tier : Tier.values()) {
-                byTier.put(tier, ITEMS.register("item_" + kind.name + "_" + tier.material,
-                        () -> new AttachmentItem(kind, tier, new Item.Properties().rarity(tier.rarity))));
+                byTier.put(tier, ITEMS.registerItem("item_" + kind.name + "_" + tier.material,
+                        p -> new AttachmentItem(kind, tier, p), p -> p.rarity(tier.rarity)));
             }
             ATTACHMENTS.put(kind, byTier);
         }
     }
 
-    public static final DeferredHolder<Item, WrenchItem> WRENCH = ITEMS.register("duct_wrench", () -> new WrenchItem(new Item.Properties().stacksTo(1)));
+    public static final DeferredHolder<Item, WrenchItem> WRENCH = ITEMS.registerItem("duct_wrench", WrenchItem::new, p -> p.stacksTo(1));
 
-    @SuppressWarnings("ConstantConditions")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DuctBlockEntity>> DUCT_BE = BLOCK_ENTITIES.register("item_duct",
-            () -> BlockEntityType.Builder.of(DuctBlockEntity::new,
-                    DUCTS.values().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
+            () -> new BlockEntityType<>(DuctBlockEntity::new,
+                    DUCTS.values().stream().map(DeferredHolder::get).toArray(Block[]::new)));
 
     public static final DeferredHolder<MenuType<?>, MenuType<AttachmentMenu>> ATTACHMENT_MENU = MENUS.register("attachment",
             () -> IMenuTypeExtension.create(AttachmentMenu::fromNetwork));

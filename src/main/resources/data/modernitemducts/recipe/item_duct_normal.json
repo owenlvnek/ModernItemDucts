@@ -2,12 +2,8 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "modernitemducts:item_duct"
-    },
-    {
-      "item": "minecraft:water_bucket"
-    }
+    "modernitemducts:item_duct",
+    "minecraft:water_bucket"
   ],
   "result": {
     "id": "modernitemducts:item_duct",

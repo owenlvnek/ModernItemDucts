@@ -1,11 +1,9 @@
 package org.vnek.modernitemducts.attachment;
 
-import net.minecraft.core.HolderLookup;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -101,9 +99,9 @@ public class FilterSettings {
             if (checkTags) {
                 if (tags == null) {
                     tags = new HashSet<>();
-                    stack.getTags().forEach(tags::add);
+                    stack.tags().forEach(tags::add);
                 }
-                if (f.getTags().anyMatch(tags::contains)) return true;
+                if (f.tags().anyMatch(tags::contains)) return true;
             }
             if (sameType(f, stack, get(Flag.IGNORE_DAMAGE), get(Flag.IGNORE_NBT))) return true;
         }
@@ -132,30 +130,25 @@ public class FilterSettings {
         for (int i = 0; i < MAX_SLOTS; i++) if (items.get(i).getCount() > 1) items.get(i).setCount(1);
     }
 
-    public CompoundTag save(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
-        tag.putInt("Flags", flags);
-        ListTag list = new ListTag();
+    public void save(ValueOutput out) {
+        out.putInt("Flags", flags);
+        ValueOutput.ValueOutputList list = out.childrenList("Items");
         for (int i = 0; i < slotCount(); i++) {
             ItemStack s = items.get(i);
             if (s.isEmpty()) continue;
-            CompoundTag e = (CompoundTag) s.copyWithCount(1).save(registries);
+            ValueOutput e = list.addChild();
+            e.store("Item", ItemStack.CODEC, s.copyWithCount(1));
             e.putByte("Slot", (byte) i);
-            list.add(e);
         }
-        tag.put("Items", list);
-        return tag;
     }
 
-    public void load(CompoundTag tag, HolderLookup.Provider registries) {
-        flags = tag.getInt("Flags");
+    public void load(ValueInput in) {
+        flags = in.getIntOr("Flags", 0);
         for (int i = 0; i < MAX_SLOTS; i++) items.set(i, ItemStack.EMPTY);
-        ListTag list = tag.getList("Items", Tag.TAG_COMPOUND);
-        for (int i = 0; i < list.size(); i++) {
-            CompoundTag e = list.getCompound(i);
-            int slot = e.getByte("Slot");
-            if (slot >= 0 && slot < MAX_SLOTS) items.set(slot, ItemStack.parseOptional(registries, e));
-        }
+        in.childrenListOrEmpty("Items").forEach(e -> {
+            int slot = e.getByteOr("Slot", (byte) -1);
+            if (slot >= 0 && slot < MAX_SLOTS) items.set(slot, e.read("Item", ItemStack.CODEC).orElse(ItemStack.EMPTY));
+        });
         sanitize();
     }
 }

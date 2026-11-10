@@ -3,22 +3,12 @@
   "category": "misc",
   "ingredients": [
     [
-      {
-        "item": "modernitemducts:item_retriever_copper"
-      },
-      {
-        "item": "modernitemducts:item_retriever_iron"
-      },
-      {
-        "item": "modernitemducts:item_retriever_gold"
-      },
-      {
-        "item": "modernitemducts:item_retriever_diamond"
-      }
+      "modernitemducts:item_retriever_copper",
+      "modernitemducts:item_retriever_iron",
+      "modernitemducts:item_retriever_gold",
+      "modernitemducts:item_retriever_diamond"
     ],
-    {
-      "item": "minecraft:netherite_ingot"
-    }
+    "minecraft:netherite_ingot"
   ],
   "result": {
     "id": "modernitemducts:item_retriever_netherite",

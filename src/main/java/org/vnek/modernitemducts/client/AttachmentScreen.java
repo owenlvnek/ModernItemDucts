@@ -1,18 +1,18 @@
 package org.vnek.modernitemducts.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import org.vnek.modernitemducts.ModernItemDucts;
@@ -35,8 +35,8 @@ import java.util.function.Supplier;
  * Shift+right by 4.
  */
 public class AttachmentScreen extends AbstractContainerScreen<AttachmentMenu> {
-    private static final ResourceLocation PANEL = ModernItemDucts.id("textures/gui/attachment.png");
-    private static final ResourceLocation WIDGETS = ModernItemDucts.id("textures/gui/widgets.png");
+    private static final Identifier PANEL = ModernItemDucts.id("textures/gui/attachment.png");
+    private static final Identifier WIDGETS = ModernItemDucts.id("textures/gui/widgets.png");
 
     // icon indices in widgets.png (see ICONS in tools/generate_assets.py)
     private static final int I_ALLOW = 0, I_DENY = 1, I_DAMAGE = 2, I_NBT = 4, I_TAGS = 6, I_MOD = 8,
@@ -46,9 +46,7 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentMenu> {
     private final List<Readout> readouts = new ArrayList<>();
 
     public AttachmentScreen(AttachmentMenu menu, Inventory inv, Component title) {
-        super(menu, inv, title);
-        imageWidth = AttachmentMenu.WIDTH;
-        imageHeight = AttachmentMenu.HEIGHT;
+        super(menu, inv, title, AttachmentMenu.WIDTH, AttachmentMenu.HEIGHT);
         inventoryLabelY = imageHeight - 94;
     }
 
@@ -143,9 +141,12 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentMenu> {
 
     /** Index into {@link AttachmentMenu#STEPS}: ±1 normally, ±16 with Shift+left, ±4 with Shift+right. */
     private static int step(boolean plus, int mouseButton) {
-        int i = !Screen.hasShiftDown() ? 0 : mouseButton == 0 ? 4 : 2;
+        int i = !shiftHeld ? 0 : mouseButton == 0 ? 4 : 2;
         return plus ? i : i + 1;
     }
+
+    /** Shift state of the click currently being handled (set by StateButton#mouseClicked). */
+    private static boolean shiftHeld;
 
     private record Readout(int cx, int y, int dataIndex) {}
 
@@ -165,34 +166,33 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentMenu> {
         for (StateButton b : stateButtons) b.refresh();
     }
 
-    @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        super.render(g, mouseX, mouseY, partial); // draws the background itself since 1.20.2
-        renderTooltip(g, mouseX, mouseY);
+    private static void blit(GuiGraphicsExtractor g, net.minecraft.resources.Identifier tex, int x, int y, int u, int v, int w, int h) {
+        g.blit(RenderPipelines.GUI_TEXTURED, tex, x, y, u, v, w, h, 256, 256);
     }
 
     @Override
-    protected void renderBg(GuiGraphics g, float partial, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partial) {
+        super.extractBackground(g, mouseX, mouseY, partial);
         int x = leftPos, y = topPos;
         // side tab first so the panel overlaps its open edge
-        if (active()) g.blit(WIDGETS, x - 24, y + 2, 0, 60, 27, 52);
-        else g.blit(WIDGETS, x - 24, y + 2, 30, 60, 27, 28);
-        g.blit(PANEL, x, y, 0, 0, imageWidth, imageHeight);
+        if (active()) blit(g, WIDGETS, x - 24, y + 2, 0, 60, 27, 52);
+        else blit(g, WIDGETS, x - 24, y + 2, 30, 60, 27, 28);
+        blit(g, PANEL, x, y, 0, 0, imageWidth, imageHeight);
         for (Slot s : menu.slots) {
-            if (s instanceof AttachmentMenu.GhostSlot) g.blit(WIDGETS, x + s.x - 1, y + s.y - 1, 18, 0, 18, 18);
+            if (s instanceof AttachmentMenu.GhostSlot) blit(g, WIDGETS, x + s.x - 1, y + s.y - 1, 18, 0, 18, 18);
         }
-        for (Readout r : readouts) g.blit(WIDGETS, r.cx - 12, r.y, 0, 148, 24, 12);
+        for (Readout r : readouts) blit(g, WIDGETS, r.cx - 12, r.y, 0, 148, 24, 12);
         // title underline in the tier colour
         g.fill(x + 8, y + 16, x + imageWidth - 8, y + 17, 0xFF000000 | menu.tier.tint);
     }
 
     @Override
-    protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
-        super.renderLabels(g, mouseX, mouseY);
+    protected void extractLabels(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+        super.extractLabels(g, mouseX, mouseY);
         for (Readout r : readouts) {
             int v = menu.get(r.dataIndex);
             String text = r.dataIndex == AttachmentMenu.D_MAX_STOCK && v == 0 ? "∞" : Integer.toString(v);
-            g.drawString(font, text, r.cx - leftPos - font.width(text) / 2, r.y - topPos + 2, 0xFF303030, false);
+            g.text(font, text, r.cx - leftPos - font.width(text) / 2, r.y - topPos + 2, 0xFF303030, false);
         }
     }
 
@@ -222,8 +222,10 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentMenu> {
         }
 
         @Override
-        public boolean mouseClicked(double mx, double my, int button) {
-            if (!active || !visible || (button != 0 && button != 1) || !clicked(mx, my)) return false;
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            int button = event.button();
+            if (!active || !visible || (button != 0 && button != 1) || !isMouseOver(event.x(), event.y())) return false;
+            shiftHeld = event.hasShiftDown();
             float pitch = state != null ? (state.getAsBoolean() ? 0.6f : 1.0f) : 0.8f; // switching on: higher, off: lower
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, pitch));
             pressedUntil = Util.getMillis() + 120;
@@ -232,7 +234,7 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentMenu> {
         }
 
         @Override
-        protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partial) {
+        protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partial) {
             boolean hovered = isHoveredOrFocused();
             boolean pressed = Util.getMillis() < pressedUntil;
             boolean on = state != null && state.getAsBoolean();
@@ -242,20 +244,15 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentMenu> {
             else if (on) sprite = hovered ? 5 : 4;
             else sprite = hovered ? 1 : 0;
             if (width == 20) {
-                g.blit(WIDGETS, getX(), getY(), sprite * 20, 20, 20, 20);
+                blit(g, WIDGETS, getX(), getY(), sprite * 20, 20, 20, 20);
             } else {
-                g.blit(WIDGETS, getX(), getY(), Math.min(sprite, 3) * 14, 40, 14, 14);
+                blit(g, WIDGETS, getX(), getY(), Math.min(sprite, 3) * 14, 40, 14, 14);
             }
             int i = icon.getAsInt();
             int u = (i % 20) * 12, v = 120 + (i / 20) * 12;
             int off = (width - 12) / 2 + (pressed ? 1 : 0);
-            if (!active) {
-                RenderSystem.enableBlend();
-                g.setColor(1f, 1f, 1f, 0.45f);
-            }
-            g.blit(WIDGETS, getX() + off, getY() + off, u, v, 12, 12);
-            g.setColor(1f, 1f, 1f, 1f);
-            RenderSystem.disableBlend();
+            int color = active ? 0xFFFFFFFF : 0x73FFFFFF; // faded icon on disabled buttons
+            g.blit(RenderPipelines.GUI_TEXTURED, WIDGETS, getX() + off, getY() + off, u, v, 12, 12, 256, 256, color);
         }
 
         @Override

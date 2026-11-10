@@ -1,5 +1,4 @@
 {
-  "render_type": "minecraft:solid",
   "ambientocclusion": false,
   "textures": {
     "particle": "modernitemducts:block/item_duct_opaque_normal",

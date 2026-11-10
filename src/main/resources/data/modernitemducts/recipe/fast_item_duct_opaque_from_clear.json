@@ -2,27 +2,13 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "modernitemducts:fast_item_duct"
-    },
-    {
-      "item": "modernitemducts:fast_item_duct"
-    },
-    {
-      "item": "modernitemducts:fast_item_duct"
-    },
-    {
-      "item": "modernitemducts:fast_item_duct"
-    },
-    {
-      "item": "modernitemducts:fast_item_duct"
-    },
-    {
-      "item": "modernitemducts:fast_item_duct"
-    },
-    {
-      "item": "minecraft:iron_ingot"
-    }
+    "modernitemducts:fast_item_duct",
+    "modernitemducts:fast_item_duct",
+    "modernitemducts:fast_item_duct",
+    "modernitemducts:fast_item_duct",
+    "modernitemducts:fast_item_duct",
+    "modernitemducts:fast_item_duct",
+    "minecraft:iron_ingot"
   ],
   "result": {
     "id": "modernitemducts:fast_item_duct_opaque",

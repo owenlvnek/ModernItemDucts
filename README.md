@@ -1,10 +1,10 @@
 # Modern Item Ducts
 
-A Minecraft **1.21.1 / NeoForge 21.1** mod: tiered item ducts with servos, retrievers and filters,
+A Minecraft **26.1.2 / NeoForge 26.1.2** mod: tiered item ducts with servos, retrievers and filters,
 in the style of the classic 1.12-era item-duct mods. Mod id `modernitemducts`, MIT licensed.
 
-> Branch `1.21.1` (NeoForge). The original Forge 1.20.1 version lives on `main`; behaviour, ids,
-> art and GUI are the same on both. Jar: `modernitemducts-<version>+mc1.21.1.jar`.
+> Branch `26.1.2` (NeoForge). Other versions: `main` (Forge 1.20.1), `1.21.1` (NeoForge 1.21.1).
+> Behaviour, ids, art and GUI are the same on all of them. Jar: `modernitemducts-<version>+mc26.1.2.jar`.
 
 ![Item ducts with servos, retrievers and chests](docs/screenshot.png)
 
@@ -161,13 +161,14 @@ the next duct's update).
 ## Building and testing
 
 ```
-# Gradle runs on Java 17+; the Java 21 toolchain is provisioned automatically (foojay).
+# Gradle runs on Java 17+; the Java 25 toolchain is provisioned automatically (foojay).
 ./gradlew --no-daemon build                 # jar in build/libs/
 ./gradlew --no-daemon runGameTestServer     # headless GameTests
 python3 -I tools/generate_assets.py         # regenerate textures/models/data (needs Pillow)
 ```
 
-GameTests (`gametest/DuctGameTests.java`): servo delivery through a duct line, default
+GameTests (`gametest/DuctGameTests.java`, registered as test functions + test instances by
+`gametest/GameTestRegistration.java`): servo delivery through a duct line, default
 redstone gating, servo whitelist, filter blacklist redirect, full destination leaves the
 source untouched, rerouting after a duct is removed mid-flight, homeless items returning to the
 servo backlog, retriever pulling filtered items.

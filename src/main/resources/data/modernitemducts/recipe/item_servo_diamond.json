@@ -6,18 +6,10 @@
     "GTG"
   ],
   "key": {
-    "N": {
-      "item": "minecraft:iron_nugget"
-    },
-    "K": {
-      "item": "minecraft:redstone"
-    },
-    "G": {
-      "item": "minecraft:glass"
-    },
-    "T": {
-      "item": "minecraft:diamond"
-    }
+    "N": "minecraft:iron_nugget",
+    "K": "minecraft:redstone",
+    "G": "minecraft:glass",
+    "T": "minecraft:diamond"
   },
   "result": {
     "id": "modernitemducts:item_servo_diamond",

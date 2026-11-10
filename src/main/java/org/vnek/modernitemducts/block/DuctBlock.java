@@ -5,8 +5,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -64,18 +65,23 @@ public class DuctBlock extends BaseEntityBlock {
     public final DuctType type;
 
     /** Block codec (required for BaseEntityBlock since 1.20.5); the duct type is fixed per registry entry. */
-    public static final MapCodec<DuctBlock> CODEC = DuctType.CODEC.fieldOf("duct_type").xmap(DuctBlock::new, b -> b.type);
+    public static final MapCodec<DuctBlock> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+            DuctType.CODEC.fieldOf("duct_type").forGetter(b -> b.type), propertiesCodec()).apply(i, DuctBlock::new));
 
     @Override
     protected MapCodec<? extends BaseEntityBlock> codec() {
         return CODEC;
     }
 
-    public DuctBlock(DuctType type) {
-        super(Properties.of().mapColor(MapColor.METAL).strength(1.0f, 2.0f).sound(SoundType.STONE)
-                .noOcclusion().isViewBlocking((s, l, p) -> false).isSuffocating((s, l, p) -> false)
-                .pushReaction(PushReaction.BLOCK)
-                .lightLevel(s -> type == DuctType.FAST ? 4 : 0));
+    /** Shared block properties (the registry id is set by the deferred register). */
+    public static Properties properties(Properties p) {
+        return p.mapColor(MapColor.METAL).strength(1.0f, 2.0f).sound(SoundType.STONE)
+                .noOcclusion().isViewBlocking((s, l, pos) -> false).isSuffocating((s, l, pos) -> false)
+                .pushReaction(PushReaction.BLOCK);
+    }
+
+    public DuctBlock(DuctType type, Properties props) {
+        super(props.lightLevel(s -> type == DuctType.FAST ? 4 : 0));
         this.type = type;
         BlockState def = stateDefinition.any().setValue(WEIGHT, DuctWeight.NORMAL);
         for (EnumProperty<ConnectionType> p : SIDES) def = def.setValue(p, ConnectionType.NONE);
@@ -164,13 +170,13 @@ public class DuctBlock extends BaseEntityBlock {
 
     /** Right-click with an item in hand: wrenches act on the duct, anything else on an attachment opens its GUI. */
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack held, BlockState state, Level level, BlockPos pos, Player player,
-                                              InteractionHand hand, BlockHitResult hit) {
-        if (!(level.getBlockEntity(pos) instanceof DuctBlockEntity be)) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    protected InteractionResult useItemOn(ItemStack held, BlockState state, Level level, BlockPos pos, Player player,
+                                          InteractionHand hand, BlockHitResult hit) {
+        if (!(level.getBlockEntity(pos) instanceof DuctBlockEntity be)) return InteractionResult.TRY_WITH_EMPTY_HAND;
         Part part = hitPart(be, hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ()), hit.getDirection());
 
         if (WrenchItem.isWrench(held)) {
-            if (level.isClientSide) return ItemInteractionResult.SUCCESS;
+            if (level.isClientSide()) return InteractionResult.SUCCESS;
             if (player.isShiftKeyDown()) {
                 level.destroyBlock(pos, true, player);
             } else if (part.type() == PartType.ATTACHMENT) {
@@ -178,14 +184,14 @@ public class DuctBlock extends BaseEntityBlock {
             } else {
                 be.toggleBlocked(part.face(), player);
             }
-            return ItemInteractionResult.CONSUME;
+            return InteractionResult.CONSUME;
         }
         if (part.type() == PartType.ATTACHMENT) {
             openAttachment(level, player, be, part.face());
-            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+            return InteractionResult.SUCCESS;
         }
         // Not ours: let the held item act (e.g. an attachment item placing itself).
-        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        return InteractionResult.TRY_WITH_EMPTY_HAND;
     }
 
     /** Empty-hand right-click: an attachment opens its GUI; the duct body has none. */
@@ -195,20 +201,22 @@ public class DuctBlock extends BaseEntityBlock {
         Part part = hitPart(be, hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ()), hit.getDirection());
         if (part.type() != PartType.ATTACHMENT) return InteractionResult.PASS;
         openAttachment(level, player, be, part.face());
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     private static void openAttachment(Level level, Player player, DuctBlockEntity be, Direction face) {
-        if (level.isClientSide || !(player instanceof ServerPlayer sp)) return;
+        if (level.isClientSide() || !(player instanceof ServerPlayer sp)) return;
         Attachment att = be.getAttachment(face);
         if (att == null) return;
         BlockPos pos = be.getBlockPos();
         sp.openMenu(new AttachmentMenu.Provider(be, face), buf -> AttachmentMenu.writeOpenData(buf, pos, face, att));
     }
 
+    /** Pick-block: an attachment under the crosshair picks that attachment, otherwise the duct with its weight. */
     @Override
-    public ItemStack getCloneItemStack(BlockState state, HitResult target, LevelReader level, BlockPos pos, Player player) {
-        if (target instanceof BlockHitResult bhr && level.getBlockEntity(pos) instanceof DuctBlockEntity be) {
+    public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData, Player player) {
+        HitResult target = player.pick(player.blockInteractionRange(), 1.0F, false);
+        if (target instanceof BlockHitResult bhr && bhr.getBlockPos().equals(pos) && level.getBlockEntity(pos) instanceof DuctBlockEntity be) {
             Part part = hitPart(be, bhr.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ()), bhr.getDirection());
             if (part.type() == PartType.ATTACHMENT) return be.getAttachment(part.face()).toItem();
         }
@@ -216,16 +224,8 @@ public class DuctBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor, BlockPos fromPos, boolean moving) {
-        if (!level.isClientSide && level.getBlockEntity(pos) instanceof DuctBlockEntity be) be.requestScan();
-    }
-
-    @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moving) {
-        if (!state.is(newState.getBlock())) {
-            if (!level.isClientSide && level.getBlockEntity(pos) instanceof DuctBlockEntity be) be.dropContents();
-        }
-        super.onRemove(state, level, pos, newState, moving);
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor, @Nullable Orientation orientation, boolean moving) {
+        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof DuctBlockEntity be) be.requestScan();
     }
 
     // ------------------------------------------------------------------ misc block properties
@@ -236,7 +236,7 @@ public class DuctBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+    protected boolean propagatesSkylightDown(BlockState state) {
         return true;
     }
 
@@ -250,6 +250,6 @@ public class DuctBlock extends BaseEntityBlock {
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         // All real work happens in the per-level DuctManager; the ticker only guarantees registration.
-        return level.isClientSide ? null : createTickerHelper(type, Registration.DUCT_BE.get(), (l, p, s, be) -> be.ensureRegistered());
+        return level.isClientSide() ? null : createTickerHelper(type, Registration.DUCT_BE.get(), (l, p, s, be) -> be.ensureRegistered());
     }
 }

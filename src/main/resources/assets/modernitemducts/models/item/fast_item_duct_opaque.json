@@ -1,6 +1,5 @@
 {
   "parent": "minecraft:block/block",
-  "render_type": "minecraft:solid",
   "textures": {
     "particle": "modernitemducts:block/fast_item_duct_opaque_normal",
     "core": "modernitemducts:block/fast_item_duct_opaque_normal"
@@ -252,19 +251,5 @@
         0.4
       ]
     }
-  },
-  "overrides": [
-    {
-      "predicate": {
-        "modernitemducts:weight": 0.5
-      },
-      "model": "modernitemducts:item/fast_item_duct_opaque_dense"
-    },
-    {
-      "predicate": {
-        "modernitemducts:weight": 1.0
-      },
-      "model": "modernitemducts:item/fast_item_duct_opaque_vacuum"
-    }
-  ]
+  }
 }

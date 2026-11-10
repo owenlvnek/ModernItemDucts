@@ -3,19 +3,11 @@
   "category": "misc",
   "ingredients": [
     [
-      {
-        "item": "modernitemducts:item_filter_copper"
-      },
-      {
-        "item": "modernitemducts:item_filter_iron"
-      },
-      {
-        "item": "modernitemducts:item_filter_gold"
-      }
+      "modernitemducts:item_filter_copper",
+      "modernitemducts:item_filter_iron",
+      "modernitemducts:item_filter_gold"
     ],
-    {
-      "item": "minecraft:diamond"
-    }
+    "minecraft:diamond"
   ],
   "result": {
     "id": "modernitemducts:item_filter_diamond",

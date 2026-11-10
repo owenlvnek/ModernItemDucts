@@ -1,4 +1,4 @@
-// NeoForge 1.21.1 build, following the official NeoForge MDK (ModDevGradle) layout.
+// NeoForge 26.1.2 build, following the official NeoForge MDK (ModDevGradle) layout.
 plugins {
     id 'java-library'
     id 'net.neoforged.moddev' version '2.0.148'
@@ -16,15 +16,10 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 neoForge {
     version = project.neo_version
-
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
-    }
 
     runs {
         client {
@@ -58,7 +53,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             minecraft_version      : minecraft_version,
             minecraft_version_range: minecraft_version_range,
             neo_version            : neo_version,
-            loader_version_range   : loader_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

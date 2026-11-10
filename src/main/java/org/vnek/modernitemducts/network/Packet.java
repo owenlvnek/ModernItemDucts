@@ -1,9 +1,9 @@
 package org.vnek.modernitemducts.network;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
@@ -71,48 +71,50 @@ public class Packet {
         return destPos.relative(destFace);
     }
 
-    public CompoundTag save(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
-        tag.put("Item", stack.copyWithCount(1).save(registries));
-        tag.putInt("Count", stack.getCount());
-        tag.putInt("Progress", progress);
-        tag.putByte("Dir", (byte) (dir == null ? -1 : dir.ordinal()));
-        tag.putByte("PrevDir", (byte) (prevDir == null ? -1 : prevDir.ordinal()));
-        tag.putByte("Speed", (byte) speed);
+    public void save(ValueOutput out) {
+        out.store("Item", ItemStack.CODEC, stack.copyWithCount(1));
+        out.putInt("Count", stack.getCount());
+        out.putInt("Progress", progress);
+        out.putByte("Dir", (byte) (dir == null ? -1 : dir.ordinal()));
+        out.putByte("PrevDir", (byte) (prevDir == null ? -1 : prevDir.ordinal()));
+        out.putByte("Speed", (byte) speed);
         if (destPos != null && destFace != null) {
-            tag.putLong("Dest", destPos.asLong());
-            tag.putByte("DestFace", (byte) destFace.ordinal());
+            out.putLong("Dest", destPos.asLong());
+            out.putByte("DestFace", (byte) destFace.ordinal());
         }
-        if (sourcePos != null) tag.putLong("Source", sourcePos.asLong());
-        byte[] rest = new byte[Math.max(0, path.length - pathIndex)];
-        System.arraycopy(path, pathIndex, rest, 0, rest.length);
-        tag.putByteArray("Path", rest);
-        tag.putBoolean("ToBacklog", toBacklog);
-        tag.putBoolean("Reroute", needsReroute);
-        return tag;
+        if (sourcePos != null) out.putLong("Source", sourcePos.asLong());
+        int[] rest = new int[Math.max(0, path.length - pathIndex)];
+        for (int i = 0; i < rest.length; i++) rest[i] = path[pathIndex + i];
+        out.putIntArray("Path", rest);
+        out.putBoolean("ToBacklog", toBacklog);
+        out.putBoolean("Reroute", needsReroute);
     }
 
     @Nullable
-    public static Packet load(CompoundTag tag, HolderLookup.Provider registries) {
-        ItemStack stack = ItemStack.parseOptional(registries, tag.getCompound("Item"));
+    public static Packet load(ValueInput in) {
+        ItemStack stack = in.read("Item", ItemStack.CODEC).orElse(ItemStack.EMPTY);
         if (stack.isEmpty()) return null;
-        if (tag.contains("Count")) stack.setCount(tag.getInt("Count"));
+        stack.setCount(in.getIntOr("Count", stack.getCount()));
         if (stack.isEmpty()) return null;
-        int speed = Math.max(1, Math.min(3, tag.getByte("Speed")));
+        int speed = Math.max(1, Math.min(3, in.getByteOr("Speed", (byte) 1)));
         Packet p = new Packet(stack, speed);
-        p.progress = Math.max(0, tag.getInt("Progress"));
-        p.dir = dirOrNull(tag.getByte("Dir"));
-        p.prevDir = dirOrNull(tag.getByte("PrevDir"));
-        if (tag.contains("Dest")) {
-            p.destPos = BlockPos.of(tag.getLong("Dest"));
-            p.destFace = dirOrNull(tag.getByte("DestFace"));
+        p.progress = Math.max(0, in.getIntOr("Progress", 0));
+        p.dir = dirOrNull(in.getByteOr("Dir", (byte) -1));
+        p.prevDir = dirOrNull(in.getByteOr("PrevDir", (byte) -1));
+        in.getLong("Dest").ifPresent(d -> {
+            p.destPos = BlockPos.of(d);
+            p.destFace = dirOrNull(in.getByteOr("DestFace", (byte) -1));
+        });
+        in.getLong("Source").ifPresent(src -> p.sourcePos = BlockPos.of(src));
+        int[] raw = in.getIntArray("Path").orElse(new int[0]);
+        byte[] path = new byte[raw.length];
+        for (int i = 0; i < raw.length; i++) {
+            if (raw[i] < 0 || raw[i] > 5) { path = new byte[0]; p.needsReroute = true; break; }
+            path[i] = (byte) raw[i];
         }
-        if (tag.contains("Source")) p.sourcePos = BlockPos.of(tag.getLong("Source"));
-        byte[] raw = tag.getByteArray("Path");
-        for (byte b : raw) if (b < 0 || b > 5) { raw = new byte[0]; p.needsReroute = true; break; }
-        p.path = raw;
-        p.toBacklog = tag.getBoolean("ToBacklog");
-        p.needsReroute |= tag.getBoolean("Reroute");
+        p.path = path;
+        p.toBacklog = in.getBooleanOr("ToBacklog", false);
+        p.needsReroute |= in.getBooleanOr("Reroute", false);
         return p;
     }
 

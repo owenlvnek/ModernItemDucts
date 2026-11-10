@@ -1,5 +1,4 @@
 {
-  "render_type": "minecraft:cutout",
   "ambientocclusion": false,
   "textures": {
     "particle": "modernitemducts:block/item_duct_normal",

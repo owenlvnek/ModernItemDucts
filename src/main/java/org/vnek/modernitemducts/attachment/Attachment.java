@@ -1,9 +1,7 @@
 package org.vnek.modernitemducts.attachment;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.item.ItemStack;
 import org.vnek.modernitemducts.network.Routing;
 import org.vnek.modernitemducts.Config;
@@ -123,47 +121,43 @@ public class Attachment {
 
     // ------------------------------------------------------------------ persistence
 
-    public CompoundTag save(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
-        tag.putByte("Kind", (byte) kind.ordinal());
-        tag.putByte("Tier", (byte) tier.ordinal());
-        tag.put("Filter", filter.save(registries));
-        tag.putInt("MaxPerOp", maxPerOp);
-        tag.putInt("MaxStock", maxStock);
-        tag.putByte("Sort", (byte) sortMode.ordinal());
-        tag.putBoolean("PreventOverSend", preventOverSend);
-        tag.putByte("Redstone", (byte) redstoneMode.ordinal());
-        tag.putBoolean("Powered", powered);
-        tag.putInt("RR", rrCursor);
+    public void save(ValueOutput out) {
+        out.putByte("Kind", (byte) kind.ordinal());
+        out.putByte("Tier", (byte) tier.ordinal());
+        filter.save(out.child("Filter"));
+        out.putInt("MaxPerOp", maxPerOp);
+        out.putInt("MaxStock", maxStock);
+        out.putByte("Sort", (byte) sortMode.ordinal());
+        out.putBoolean("PreventOverSend", preventOverSend);
+        out.putByte("Redstone", (byte) redstoneMode.ordinal());
+        out.putBoolean("Powered", powered);
+        out.putInt("RR", rrCursor);
         if (!backlog.isEmpty()) {
-            ListTag list = new ListTag();
+            ValueOutput.ValueOutputList list = out.childrenList("Backlog");
             for (BacklogEntry e : backlog) {
-                CompoundTag t = (CompoundTag) e.template.copyWithCount(1).save(registries);
+                ValueOutput t = list.addChild();
+                t.store("Item", ItemStack.CODEC, e.template.copyWithCount(1));
                 t.putInt("Amount", e.count);
-                list.add(t);
             }
-            tag.put("Backlog", list);
         }
-        return tag;
     }
 
-    public static Attachment load(CompoundTag tag, HolderLookup.Provider registries) {
-        Attachment a = new Attachment(AttachmentKind.byId(tag.getByte("Kind")), Tier.byId(tag.getByte("Tier")));
-        a.filter.load(tag.getCompound("Filter"), registries);
-        a.setMaxPerOp(tag.contains("MaxPerOp") ? tag.getInt("MaxPerOp") : a.tier.maxItems);
-        a.setMaxStock(tag.getInt("MaxStock"));
-        a.setSortMode(SortMode.byId(tag.getByte("Sort")));
-        a.preventOverSend = !tag.contains("PreventOverSend") || tag.getBoolean("PreventOverSend");
-        a.redstoneMode = tag.contains("Redstone") ? RedstoneMode.byId(tag.getByte("Redstone")) : a.redstoneMode;
-        a.powered = tag.getBoolean("Powered");
-        a.rrCursor = Math.max(0, tag.getInt("RR"));
-        ListTag list = tag.getList("Backlog", Tag.TAG_COMPOUND);
-        for (int i = 0; i < list.size(); i++) {
-            CompoundTag t = list.getCompound(i);
-            ItemStack s = ItemStack.parseOptional(registries, t);
-            int amount = t.getInt("Amount");
+    public static Attachment load(ValueInput in) {
+        Attachment a = new Attachment(AttachmentKind.byId(in.getByteOr("Kind", (byte) 0)), Tier.byId(in.getByteOr("Tier", (byte) 0)));
+        a.filter.load(in.childOrEmpty("Filter"));
+        a.setMaxPerOp(in.getIntOr("MaxPerOp", a.tier.maxItems));
+        a.setMaxStock(in.getIntOr("MaxStock", 0));
+        a.setSortMode(SortMode.byId(in.getByteOr("Sort", (byte) 0)));
+        a.preventOverSend = in.getBooleanOr("PreventOverSend", true);
+        byte rs = in.getByteOr("Redstone", (byte) -1);
+        if (rs >= 0) a.redstoneMode = RedstoneMode.byId(rs);
+        a.powered = in.getBooleanOr("Powered", false);
+        a.rrCursor = Math.max(0, in.getIntOr("RR", 0));
+        in.childrenListOrEmpty("Backlog").forEach(t -> {
+            ItemStack s = t.read("Item", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+            int amount = t.getIntOr("Amount", 0);
             if (!s.isEmpty() && amount > 0) a.backlog.add(new BacklogEntry(s.copyWithCount(1), amount));
-        }
+        });
         return a;
     }
 

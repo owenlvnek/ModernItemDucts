@@ -2,27 +2,13 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "modernitemducts:item_duct_opaque"
-    },
-    {
-      "item": "modernitemducts:item_duct_opaque"
-    },
-    {
-      "item": "modernitemducts:item_duct_opaque"
-    },
-    {
-      "item": "modernitemducts:item_duct_opaque"
-    },
-    {
-      "item": "modernitemducts:item_duct_opaque"
-    },
-    {
-      "item": "modernitemducts:item_duct_opaque"
-    },
-    {
-      "item": "minecraft:glass"
-    }
+    "modernitemducts:item_duct_opaque",
+    "modernitemducts:item_duct_opaque",
+    "modernitemducts:item_duct_opaque",
+    "modernitemducts:item_duct_opaque",
+    "modernitemducts:item_duct_opaque",
+    "modernitemducts:item_duct_opaque",
+    "minecraft:glass"
   ],
   "result": {
     "id": "modernitemducts:item_duct",

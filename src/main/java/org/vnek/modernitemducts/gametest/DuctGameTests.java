@@ -2,15 +2,13 @@ package org.vnek.modernitemducts.gametest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import org.vnek.modernitemducts.ModernItemDucts;
 import org.vnek.modernitemducts.Registration;
 import org.vnek.modernitemducts.attachment.Attachment;
@@ -23,35 +21,33 @@ import org.vnek.modernitemducts.block.DuctType;
 
 /**
  * Server-side GameTests. Run with {@code ./gradlew runGameTestServer}.
- * All tests use the "platform" template: a 9x4x9 area with a stone floor at y=0.
+ * All tests use the "platform" structure: a 9x4x9 area with a stone floor at y=0.
+ * Registered (with their time limits) by {@link GameTestRegistration}.
  */
-@GameTestHolder(ModernItemDucts.MODID)
-@PrefixGameTestTemplate(false)
 public class DuctGameTests {
-    private static final String TEMPLATE = "platform";
 
     // ------------------------------------------------------------------ helpers
 
     private static DuctBlockEntity duct(GameTestHelper h, int x, int y, int z, DuctType type) {
         BlockPos p = new BlockPos(x, y, z);
         h.setBlock(p, Registration.DUCTS.get(type).get());
-        if (!(h.getBlockEntity(p) instanceof DuctBlockEntity be)) throw new IllegalStateException("no duct BE at " + p);
+        if (!(h.getBlockEntity(p, BlockEntity.class) instanceof DuctBlockEntity be)) throw new IllegalStateException("no duct BE at " + p);
         be.ensureRegistered();
         return be;
     }
 
     private static DuctBlockEntity ductAt(GameTestHelper h, int x, int y, int z) {
-        return (DuctBlockEntity) h.getBlockEntity(new BlockPos(x, y, z));
+        return h.getBlockEntity(new BlockPos(x, y, z), DuctBlockEntity.class);
     }
 
     private static Container barrel(GameTestHelper h, int x, int y, int z) {
         BlockPos p = new BlockPos(x, y, z);
         h.setBlock(p, Blocks.BARREL);
-        return (Container) h.getBlockEntity(p);
+        return (Container) h.getBlockEntity(p, BlockEntity.class);
     }
 
     private static Container container(GameTestHelper h, int x, int y, int z) {
-        return (Container) h.getBlockEntity(new BlockPos(x, y, z));
+        return (Container) h.getBlockEntity(new BlockPos(x, y, z), BlockEntity.class);
     }
 
     private static int count(Container c, Item item) {
@@ -74,7 +70,6 @@ public class DuctGameTests {
     // ------------------------------------------------------------------ tests
 
     /** A servo pulls from a barrel and delivers through a 4-duct line into a second barrel. */
-    @GameTest(template = TEMPLATE, timeoutTicks = 300)
     public static void servoDeliversThroughLine(GameTestHelper h) {
         Container a = barrel(h, 1, 1, 1);
         a.setItem(0, new ItemStack(Items.DIAMOND, 20));
@@ -91,7 +86,6 @@ public class DuctGameTests {
     }
 
     /** Default redstone mode requires a signal: nothing moves until the duct is powered. */
-    @GameTest(template = TEMPLATE, timeoutTicks = 300)
     public static void servoWaitsForRedstoneByDefault(GameTestHelper h) {
         Container a = barrel(h, 1, 1, 1);
         a.setItem(0, new ItemStack(Items.DIAMOND, 8));
@@ -111,7 +105,6 @@ public class DuctGameTests {
     }
 
     /** Whitelist on the servo: only diamonds leave, dirt stays in the source. */
-    @GameTest(template = TEMPLATE, timeoutTicks = 400)
     public static void servoWhitelistFilter(GameTestHelper h) {
         Container a = barrel(h, 1, 1, 1);
         a.setItem(0, new ItemStack(Items.DIRT, 10));
@@ -133,7 +126,6 @@ public class DuctGameTests {
     }
 
     /** Blacklist filter attachment on the nearer target: dirt skips it and goes to the further one. */
-    @GameTest(template = TEMPLATE, timeoutTicks = 400)
     public static void filterBlacklistRedirects(GameTestHelper h) {
         Container a = barrel(h, 1, 1, 1);
         a.setItem(0, new ItemStack(Items.DIRT, 12));
@@ -156,7 +148,6 @@ public class DuctGameTests {
     }
 
     /** A full destination: nothing is extracted, nothing is dropped. */
-    @GameTest(template = TEMPLATE, timeoutTicks = 200)
     public static void fullDestinationLeavesSource(GameTestHelper h) {
         Container a = barrel(h, 1, 1, 1);
         a.setItem(0, new ItemStack(Items.DIAMOND, 16));
@@ -178,7 +169,6 @@ public class DuctGameTests {
      * Items in flight towards the nearer target re-route to the other branch when a duct on
      * their path is removed.
      */
-    @GameTest(template = TEMPLATE, timeoutTicks = 900)
     public static void reroutesAfterDuctRemoved(GameTestHelper h) {
         Container a = barrel(h, 1, 1, 1);
         a.setItem(0, new ItemStack(Items.DIAMOND, 64));
@@ -203,7 +193,6 @@ public class DuctGameTests {
     }
 
     /** With every destination gone, homeless items travel back into the servo's backlog. */
-    @GameTest(template = TEMPLATE, timeoutTicks = 400)
     public static void homelessItemsReturnToBacklog(GameTestHelper h) {
         Container a = barrel(h, 1, 1, 1);
         a.setItem(0, new ItemStack(Items.DIAMOND, 8));
@@ -224,7 +213,6 @@ public class DuctGameTests {
     }
 
     /** A retriever pulls matching items from another inventory on the network into its own. */
-    @GameTest(template = TEMPLATE, timeoutTicks = 300)
     public static void retrieverPullsItems(GameTestHelper h) {
         Container store = barrel(h, 1, 1, 1);
         store.setItem(0, new ItemStack(Items.DIAMOND, 10));

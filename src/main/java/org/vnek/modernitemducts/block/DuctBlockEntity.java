@@ -5,8 +5,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
@@ -25,9 +23,16 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import org.vnek.modernitemducts.network.Inv;
 import org.vnek.modernitemducts.Config;
 import org.vnek.modernitemducts.Registration;
 import org.vnek.modernitemducts.attachment.Attachment;
@@ -82,7 +87,7 @@ public class DuctBlockEntity extends BlockEntity {
     private final boolean[] clientClogged = new boolean[6];
 
     public DuctBlockEntity(BlockPos pos, BlockState state) {
-        super(Registration.DUCT_BE.get(), pos, state);
+        super(org.vnek.modernitemducts.Registration.DUCT_BE.get(), pos, state);
         Arrays.fill(conn, ConnectionType.NONE);
         for (Direction d : Direction.values()) handlers[d.ordinal()] = new FaceHandler(d);
     }
@@ -161,13 +166,13 @@ public class DuctBlockEntity extends BlockEntity {
     }
 
     public boolean isClogged(Direction d) {
-        if (level != null && level.isClientSide) return clientClogged[d.ordinal()];
+        if (level != null && level.isClientSide()) return clientClogged[d.ordinal()];
         Attachment a = attachments[d.ordinal()];
         return a != null && a.hasBacklog();
     }
 
     public boolean isAttachmentActive(Direction d) {
-        if (level != null && level.isClientSide) return clientActive[d.ordinal()];
+        if (level != null && level.isClientSide()) return clientActive[d.ordinal()];
         Attachment a = attachments[d.ordinal()];
         return a != null && a.isActive();
     }
@@ -178,12 +183,13 @@ public class DuctBlockEntity extends BlockEntity {
 
     /** The item handler of the block on face {@code d}, never force-loading chunks. */
     @Nullable
-    public IItemHandler neighborHandler(Direction d) {
+    public Inv neighborHandler(Direction d) {
         if (level == null) return null;
         BlockPos np = neighborPos(d);
         if (!level.hasChunkAt(np)) return null;
         if (level.getBlockEntity(np) instanceof DuctBlockEntity) return null;
-        return level.getCapability(Capabilities.ItemHandler.BLOCK, np, d.getOpposite());
+        ResourceHandler<ItemResource> h = level.getCapability(Capabilities.Item.BLOCK, np, d.getOpposite());
+        return h == null ? null : new Inv(h);
     }
 
     /** Neighbour duct linked on face d that belongs to {@code net}. */
@@ -288,7 +294,7 @@ public class DuctBlockEntity extends BlockEntity {
 
     /** Re-evaluates all six faces; invalidates the network if anything changed. */
     public void refreshConnections() {
-        if (level == null || level.isClientSide) return;
+        if (level == null || level.isClientSide()) return;
         ConnectionType[] next = new ConnectionType[6];
         int loaded = 0;
         for (Direction d : Direction.values()) {
@@ -302,7 +308,7 @@ public class DuctBlockEntity extends BlockEntity {
             if (be instanceof DuctBlockEntity other) {
                 Direction o = d.getOpposite();
                 if (!other.isRemoved() && !other.isBlocked(o) && !isServo(d) && !other.isServo(o)) next[i] = ConnectionType.DUCT;
-            } else if (level.getCapability(Capabilities.ItemHandler.BLOCK, np, d.getOpposite()) != null) {
+            } else if (level.getCapability(Capabilities.Item.BLOCK, np, d.getOpposite()) != null) {
                 next[i] = isServo(d) ? ConnectionType.INPUT : ConnectionType.INVENTORY;
             }
         }
@@ -348,8 +354,8 @@ public class DuctBlockEntity extends BlockEntity {
             level.playSound(null, worldPosition, SoundEvents.ITEM_FRAME_ROTATE_ITEM, SoundSource.BLOCKS, 0.6f, block ? 0.7f : 1.1f);
         }
         if (player != null) {
-            player.displayClientMessage(Component.translatable(block ? "message.modernitemducts.blocked" : "message.modernitemducts.unblocked",
-                    Component.translatable("direction.modernitemducts." + d.getSerializedName())).withStyle(ChatFormatting.GRAY), true);
+            player.sendOverlayMessage(Component.translatable(block ? "message.modernitemducts.blocked" : "message.modernitemducts.unblocked",
+                    Component.translatable("direction.modernitemducts." + d.getSerializedName())).withStyle(ChatFormatting.GRAY));
         }
     }
 
@@ -619,14 +625,14 @@ public class DuctBlockEntity extends BlockEntity {
         DuctNetwork net = network;
         if (net == null) return;
         if (a.kind == AttachmentKind.RETRIEVER) {
-            IItemHandler own = conn[face.ordinal()] == ConnectionType.INVENTORY ? neighborHandler(face) : null;
+            Inv own = conn[face.ordinal()] == ConnectionType.INVENTORY ? neighborHandler(face) : null;
             if (own != null) {
                 for (Iterator<Attachment.BacklogEntry> it = a.backlog().iterator(); it.hasNext(); ) {
                     Attachment.BacklogEntry e = it.next();
                     if (!a.filter.passes(e.template)) continue;
                     while (e.count > 0) {
                         int n = Math.min(e.count, e.template.getMaxStackSize());
-                        ItemStack rem = ItemHandlerHelper.insertItem(own, e.template.copyWithCount(n), false);
+                        ItemStack rem = own.insert(e.template.copyWithCount(n), false);
                         e.count -= n - rem.getCount();
                         if (!rem.isEmpty()) break;
                     }
@@ -657,7 +663,7 @@ public class DuctBlockEntity extends BlockEntity {
     private void extract(Direction face, Attachment a) {
         DuctNetwork net = network;
         if (net == null || conn[face.ordinal()] != ConnectionType.INPUT) return;
-        IItemHandler source = neighborHandler(face);
+        Inv source = neighborHandler(face);
         if (source == null) return;
         RouteTable table = net.routes(this, false);
         if (table == null || table.destinations.isEmpty()) return;
@@ -677,7 +683,7 @@ public class DuctBlockEntity extends BlockEntity {
     }
 
     /** Candidate stack from a slot: the slot's count (T1-T3) or a full stack (T4/T5), capped by the setting. */
-    private static ItemStack candidate(IItemHandler handler, int slot, Attachment a) {
+    private static ItemStack candidate(Inv handler, int slot, Attachment a) {
         ItemStack in = handler.getStackInSlot(slot);
         if (in.isEmpty()) return ItemStack.EMPTY;
         ItemStack avail = handler.extractItem(slot, in.getCount(), true);
@@ -698,7 +704,7 @@ public class DuctBlockEntity extends BlockEntity {
             if (src.invPos().equals(ownInv)) continue;
             Attachment srcAtt = src.duct().getAttachment(src.face());
             if (srcAtt != null && srcAtt.kind == AttachmentKind.RETRIEVER) continue;
-            IItemHandler handler = src.duct().neighborHandler(src.face());
+            Inv handler = src.duct().neighborHandler(src.face());
             if (handler == null) continue;
             for (int slot = 0; slot < handler.getSlots(); slot++) {
                 ItemStack cand = candidate(handler, slot, a);
@@ -723,36 +729,69 @@ public class DuctBlockEntity extends BlockEntity {
 
     // ================================================================== external pushes (spec §2.4, §6.6, §6.7)
 
-    private class FaceHandler implements IItemHandler {
+    /**
+     * What other blocks see on a connected face: a single always-empty slot that accepts pushes
+     * (NeoForge transfer API). Pushes happen inside the caller's transaction, so the packets they
+     * create are journalled and only spawned if that transaction commits.
+     */
+    private class FaceHandler implements ResourceHandler<ItemResource> {
         private final Direction face;
 
         FaceHandler(Direction face) {
             this.face = face;
         }
 
-        @Override public int getSlots() { return 1; }
+        @Override public int size() { return 1; }
 
-        @Override public @Nonnull ItemStack getStackInSlot(int slot) { return ItemStack.EMPTY; }
+        @Override public ItemResource getResource(int index) { return ItemResource.EMPTY; }
 
-        @Override public @Nonnull ItemStack extractItem(int slot, int amount, boolean simulate) { return ItemStack.EMPTY; }
+        @Override public long getAmountAsLong(int index) { return 0; }
 
-        @Override public int getSlotLimit(int slot) { return 64; }
+        @Override public long getCapacityAsLong(int index, ItemResource resource) { return 64; }
 
-        @Override public boolean isItemValid(int slot, @Nonnull ItemStack stack) { return true; }
+        @Override public boolean isValid(int index, ItemResource resource) { return true; }
 
         @Override
-        public @Nonnull ItemStack insertItem(int slot, @Nonnull ItemStack stack, boolean simulate) {
-            if (stack.isEmpty() || pushGuard || network == null || level == null || level.isClientSide) return stack;
+        public int insert(int index, ItemResource resource, int amount, TransactionContext transaction) {
+            if (resource.isEmpty() || amount <= 0 || pushGuard || network == null || level == null || level.isClientSide()) return 0;
             pushGuard = true;
             try {
-                return push(face, stack, simulate);
+                ItemStack stack = resource.toStack(amount);
+                ItemStack rem = push(face, stack, transaction);
+                return amount - rem.getCount();
             } finally {
                 pushGuard = false;
             }
         }
+
+        @Override
+        public int extract(int index, ItemResource resource, int amount, TransactionContext transaction) {
+            return 0; // ducts never give items back
+        }
     }
 
-    private ItemStack push(Direction face, ItemStack stack, boolean simulate) {
+    /** Packets created by external pushes, waiting for their transaction to commit. */
+    private final List<Runnable> pendingPushes = new ArrayList<>();
+    private final SnapshotJournal<Integer> pushJournal = new SnapshotJournal<>() {
+        @Override
+        protected Integer createSnapshot() {
+            return pendingPushes.size();
+        }
+
+        @Override
+        protected void revertToSnapshot(Integer size) {
+            while (pendingPushes.size() > size) pendingPushes.remove(pendingPushes.size() - 1);
+        }
+
+        @Override
+        protected void onRootCommit(Integer originalState) {
+            List<Runnable> run = new ArrayList<>(pendingPushes);
+            pendingPushes.clear();
+            run.forEach(Runnable::run);
+        }
+    };
+
+    private ItemStack push(Direction face, ItemStack stack, TransactionContext transaction) {
         DuctNetwork net = network;
         RouteTable table = net == null ? null : net.routes(this, false);
         if (table == null) return stack;
@@ -775,16 +814,20 @@ public class DuctBlockEntity extends BlockEntity {
             return stack;
         }
         if (sel == null) return stack;
-        if (!simulate) {
-            spawnPacket(stack.copyWithCount(sel.amount()), speed, sel.dest().fullPath(), sel.dest().duct(), sel.dest().face(), worldPosition);
-            if (a != null) Routing.advanceCursor(a, table.destinations, sel.dest());
-        }
+        pushJournal.updateSnapshots(transaction);
+        ItemStack sent = stack.copyWithCount(sel.amount());
+        Routing.Selection chosen = sel;
+        int packetSpeed = speed;
+        pendingPushes.add(() -> {
+            spawnPacket(sent, packetSpeed, chosen.dest().fullPath(), chosen.dest().duct(), chosen.dest().face(), worldPosition);
+            if (a != null) Routing.advanceCursor(a, table.destinations, chosen.dest());
+        });
         return stack.copyWithCount(stack.getCount() - sel.amount());
     }
 
     /** Item handler capability (registered in ModernItemDucts#registerCapabilities). */
     @Nullable
-    public IItemHandler handlerFor(@Nullable Direction side) {
+    public ResourceHandler<ItemResource> handlerFor(@Nullable Direction side) {
         if (side == null || isRemoved() || !conn[side.ordinal()].isInventoryLike()) return null;
         return handlers[side.ordinal()];
     }
@@ -792,43 +835,44 @@ public class DuctBlockEntity extends BlockEntity {
     // ================================================================== persistence (spec §15)
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        tag.putByte("Blocked", (byte) blockedMask);
-        ListTag atts = new ListTag();
+    protected void saveAdditional(ValueOutput out) {
+        super.saveAdditional(out);
+        out.putByte("Blocked", (byte) blockedMask);
+        ValueOutput.ValueOutputList atts = out.childrenList("Attachments");
         for (Direction d : Direction.values()) {
             Attachment a = attachments[d.ordinal()];
             if (a == null) continue;
-            CompoundTag t = a.save(registries);
+            ValueOutput t = atts.addChild();
+            a.save(t);
             t.putByte("Face", (byte) d.ordinal());
-            atts.add(t);
         }
-        tag.put("Attachments", atts);
-        ListTag ps = new ListTag();
-        forEachPacket(p -> ps.add(p.save(registries)));
-        tag.put("Packets", ps);
+        ValueOutput.ValueOutputList ps = out.childrenList("Packets");
+        forEachPacket(p -> p.save(ps.addChild()));
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        blockedMask = tag.getByte("Blocked") & 0x3F;
+    protected void loadAdditional(ValueInput in) {
+        super.loadAdditional(in);
+        blockedMask = in.getByteOr("Blocked", (byte) 0) & 0x3F;
         Arrays.fill(attachments, null);
-        ListTag atts = tag.getList("Attachments", Tag.TAG_COMPOUND);
-        for (int i = 0; i < atts.size(); i++) {
-            CompoundTag t = atts.getCompound(i);
-            int face = t.getByte("Face");
-            if (face >= 0 && face < 6) attachments[face] = Attachment.load(t, registries);
-        }
+        in.childrenListOrEmpty("Attachments").forEach(t -> {
+            int face = t.getByteOr("Face", (byte) -1);
+            if (face >= 0 && face < 6) attachments[face] = Attachment.load(t);
+        });
         attachmentShape = null;
         packets.clear();
         incoming.clear();
-        ListTag ps = tag.getList("Packets", Tag.TAG_COMPOUND);
-        for (int i = 0; i < ps.size(); i++) {
-            org.vnek.modernitemducts.network.Packet p = org.vnek.modernitemducts.network.Packet.load(ps.getCompound(i), registries);
+        in.childrenListOrEmpty("Packets").forEach(t -> {
+            org.vnek.modernitemducts.network.Packet p = org.vnek.modernitemducts.network.Packet.load(t);
             if (p != null) packets.add(p);
-        }
+        });
         age = 0; // loaded from disk: grace period before giving up on homeless packets
+    }
+
+    /** Everything inside drops when the block is removed (replaces Block#onRemove since 1.21.5). */
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null && !level.isClientSide()) dropContents();
     }
 
     // ================================================================== client sync (spec §14)
@@ -839,35 +883,33 @@ public class DuctBlockEntity extends BlockEntity {
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
-        ListTag atts = new ListTag();
+        TagValueOutput out = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, registries);
+        ValueOutput.ValueOutputList atts = out.childrenList("A");
         for (Direction d : Direction.values()) {
             Attachment a = attachments[d.ordinal()];
             if (a == null) continue;
-            CompoundTag t = new CompoundTag();
+            ValueOutput t = atts.addChild();
             t.putByte("Face", (byte) d.ordinal());
             t.putByte("Kind", (byte) a.kind.ordinal());
             t.putByte("Tier", (byte) a.tier.ordinal());
             t.putBoolean("Active", a.isActive());
             t.putBoolean("Clogged", a.hasBacklog());
-            atts.add(t);
         }
-        tag.put("A", atts);
         if (!type().opaque) {
-            ListTag ps = new ListTag();
+            ValueOutput.ValueOutputList ps = out.childrenList("P");
+            int n = 0;
             for (org.vnek.modernitemducts.network.Packet p : packetsView()) {
-                if (ps.size() >= CLIENT_PACKET_CAP) break;
+                if (n >= CLIENT_PACKET_CAP) break;
                 if (p.dir == null) continue;
-                CompoundTag t = new CompoundTag();
-                t.put("I", p.stack.copyWithCount(1).save(registries));
+                ValueOutput t = ps.addChild();
+                t.store("I", ItemStack.CODEC, p.stack.copyWithCount(1));
                 t.putShort("P", (short) p.progress);
                 t.putByte("D", (byte) p.dir.ordinal());
                 t.putByte("S", (byte) p.speed);
-                ps.add(t);
+                n++;
             }
-            tag.put("P", ps);
         }
-        return tag;
+        return out.buildResult();
     }
 
     @Override
@@ -876,38 +918,35 @@ public class DuctBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
-        readClient(tag, registries);
+    public void handleUpdateTag(ValueInput in) {
+        readClient(in);
     }
 
     @Override
-    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
-        readClient(pkt.getTag(), registries);
+    public void onDataPacket(Connection net, ValueInput in) {
+        readClient(in);
     }
 
-    private void readClient(CompoundTag tag, HolderLookup.Provider registries) {
+    private void readClient(ValueInput in) {
         Arrays.fill(attachments, null);
         Arrays.fill(clientActive, false);
         Arrays.fill(clientClogged, false);
-        ListTag atts = tag.getList("A", Tag.TAG_COMPOUND);
-        for (int i = 0; i < atts.size(); i++) {
-            CompoundTag t = atts.getCompound(i);
-            int f = t.getByte("Face");
-            if (f < 0 || f >= 6) continue;
-            attachments[f] = new Attachment(AttachmentKind.byId(t.getByte("Kind")), Tier.byId(t.getByte("Tier")));
-            clientActive[f] = t.getBoolean("Active");
-            clientClogged[f] = t.getBoolean("Clogged");
-        }
+        in.childrenListOrEmpty("A").forEach(t -> {
+            int f = t.getByteOr("Face", (byte) -1);
+            if (f < 0 || f >= 6) return;
+            attachments[f] = new Attachment(AttachmentKind.byId(t.getByteOr("Kind", (byte) 0)), Tier.byId(t.getByteOr("Tier", (byte) 0)));
+            clientActive[f] = t.getBooleanOr("Active", false);
+            clientClogged[f] = t.getBooleanOr("Clogged", false);
+        });
         attachmentShape = null;
         clientPackets.clear();
         long now = level == null ? 0 : level.getGameTime();
-        ListTag ps = tag.getList("P", Tag.TAG_COMPOUND);
-        for (int i = 0; i < ps.size(); i++) {
-            CompoundTag t = ps.getCompound(i);
-            ItemStack s = ItemStack.parseOptional(registries, t.getCompound("I"));
-            if (s.isEmpty()) continue;
-            clientPackets.add(new ClientPacket(s, t.getShort("P"), Direction.from3DDataValue(t.getByte("D")), t.getByte("S"), now));
-        }
+        in.childrenListOrEmpty("P").forEach(t -> {
+            ItemStack s = t.read("I", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+            if (s.isEmpty()) return;
+            clientPackets.add(new ClientPacket(s, t.getShortOr("P", (short) 0), Direction.from3DDataValue(t.getByteOr("D", (byte) 0)),
+                    t.getByteOr("S", (byte) 1), now));
+        });
     }
 
     /** Packets are drawn up to one block beyond the duct (used by DuctRenderer#getRenderBoundingBox). */

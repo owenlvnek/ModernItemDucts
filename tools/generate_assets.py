@@ -626,8 +626,10 @@ def arm_element(tex):
     return element([C0, C0, 0], [C1, C1, C0], ["up", "down", "west", "east"], tex)
 
 
-def render_type(opaque):
-    return "minecraft:solid" if opaque else "minecraft:cutout"
+def item_definition(name):
+    """Plain item model definition (assets/<ns>/items/<name>.json) pointing at models/item/<name>."""
+    write_json(os.path.join(ASSETS, "items", f"{name}.json"),
+               {"model": {"type": "minecraft:model", "model": f"{MODID}:item/{name}"}})
 
 
 def gen_duct(block_id, family, opaque):
@@ -636,17 +638,17 @@ def gen_duct(block_id, family, opaque):
     for w in WEIGHTS:
         save(duct_sheet(family, opaque, w), "block", f"{block_id}_{w}")
         write_json(os.path.join(ASSETS, "models", "block", f"{block_id}_core_{w}.json"), {
-            "parent": "minecraft:block/block", "render_type": render_type(opaque), "ambientocclusion": False,
+            "parent": "minecraft:block/block", "ambientocclusion": False,
             "textures": {"particle": f"{base}_{w}", "core": f"{base}_{w}"},
             "elements": [core_element("#core")]})
     save(collar_sheet(family), "block", f"{block_id}_collar")
     # Arm strips are identical on every weight's sheet, so arms always use the normal sheet.
     write_json(os.path.join(ASSETS, "models", "block", f"{block_id}_arm.json"), {
-        "render_type": render_type(opaque), "ambientocclusion": False,
+        "ambientocclusion": False,
         "textures": {"particle": f"{base}_normal", "arm": f"{base}_normal"},
         "elements": [arm_element("#arm")]})
     write_json(os.path.join(ASSETS, "models", "block", f"{block_id}_arm_inventory.json"), {
-        "render_type": render_type(opaque), "ambientocclusion": False,
+        "ambientocclusion": False,
         "textures": {"particle": f"{base}_normal", "arm": f"{base}_normal", "collar": f"{base}_collar"},
         "elements": [arm_element("#arm"), element([4, 4, 0], [12, 12, 4], DIRS, "#collar")]})
 
@@ -682,7 +684,7 @@ def gen_duct(block_id, family, opaque):
             e["faces"][face]["uv"] = [C0, 0, C1, 16]  # same sheet column as the outer walls
             elements.append(e)
         model = {
-            "parent": "minecraft:block/block", "render_type": render_type(opaque),
+            "parent": "minecraft:block/block",
             "textures": {"particle": tex, "core": tex},
             "elements": elements,
             "display": {
@@ -694,12 +696,15 @@ def gen_duct(block_id, family, opaque):
                 "firstperson_lefthand": {"rotation": [0, 225, 0], "translation": [0, 0, 0], "scale": [0.4, 0.4, 0.4]},
             },
         }
-        if w == "normal":
-            model["overrides"] = [
-                {"predicate": {f"{MODID}:weight": 0.5}, "model": f"{MODID}:item/{block_id}_dense"},
-                {"predicate": {f"{MODID}:weight": 1.0}, "model": f"{MODID}:item/{block_id}_vacuum"},
-            ]
         write_json(os.path.join(ASSETS, "models", "item", f"{name}.json"), model)
+
+    # Item model definition (1.21.4+): pick the dense / vacuum model from the item's block_state component.
+    write_json(os.path.join(ASSETS, "items", f"{block_id}.json"), {"model": {
+        "type": "minecraft:select", "property": "minecraft:block_state", "block_state_property": "weight",
+        "cases": [{"when": w, "model": {"type": "minecraft:model", "model": f"{MODID}:item/{block_id}_{w}"}}
+                  for w in ("dense", "vacuum")],
+        "fallback": {"type": "minecraft:model", "model": f"{MODID}:item/{block_id}"},
+    }})
 
     # loot table keeps the routing weight
     write_json(os.path.join(DATA, "loot_table", "blocks", f"{block_id}.json"), {
@@ -773,6 +778,7 @@ def gen_attachments():
             save(item_icon(kind, tint), "item", name)
             write_json(os.path.join(ASSETS, "models", "item", f"{name}.json"),
                        {"parent": "minecraft:item/generated", "textures": {"layer0": f"{MODID}:item/{name}"}})
+            item_definition(name)
 
 
 # ----------------------------------------------------------------------------- recipes
@@ -783,7 +789,7 @@ def shaped(name, pattern, key, result, count=1, components=None):
         res["components"] = components
     write_json(os.path.join(DATA, "recipe", f"{name}.json"), {
         "type": "minecraft:crafting_shaped", "category": "misc", "pattern": pattern,
-        "key": {k: ({"item": v} if isinstance(v, str) else v) for k, v in key.items()}, "result": res})
+        "key": dict(key), "result": res})
 
 
 def shapeless(name, ingredients, result, count=1, components=None):
@@ -792,7 +798,7 @@ def shapeless(name, ingredients, result, count=1, components=None):
         res["components"] = components
     write_json(os.path.join(DATA, "recipe", f"{name}.json"), {
         "type": "minecraft:crafting_shapeless", "category": "misc",
-        "ingredients": [({"item": i} if isinstance(i, str) else i) for i in ingredients], "result": res})
+        "ingredients": list(ingredients), "result": res})
 
 
 def gen_recipes():
@@ -818,7 +824,7 @@ def gen_recipes():
                    {"N": "minecraft:iron_nugget", "K": KEY_ITEM[kind], "G": "minecraft:glass", "T": item},
                    m + f"item_{kind}_{mat}", 2)
             if i > 0:
-                lower = [{"item": m + f"item_{kind}_{TIERS[j][0]}"} for j in range(i)]
+                lower = [m + f"item_{kind}_{TIERS[j][0]}" for j in range(i)]
                 shapeless(f"item_{kind}_{mat}_upgrade", [lower, item], m + f"item_{kind}_{mat}", 1)
 
 
@@ -923,7 +929,7 @@ def gen_structure(name, sx, sy, sz):
                 pos = list_payload(3, [nbt_int(x), nbt_int(y), nbt_int(z)])
                 blocks.append(compound_payload([tag(9, "pos", pos), tag(3, "state", nbt_int(0 if y == 0 else 1))]))
     root = compound_payload([
-        tag(3, "DataVersion", nbt_int(3955)),
+        tag(3, "DataVersion", nbt_int(4790)),
         tag(9, "size", list_payload(3, [nbt_int(sx), nbt_int(sy), nbt_int(sz)])),
         tag(9, "palette", list_payload(10, palette)),
         tag(9, "blocks", list_payload(10, blocks)),
@@ -947,6 +953,7 @@ def main():
     save(wrench_icon(), "item", "duct_wrench")
     write_json(os.path.join(ASSETS, "models", "item", "duct_wrench.json"),
                {"parent": "minecraft:item/handheld", "textures": {"layer0": f"{MODID}:item/duct_wrench"}})
+    item_definition("duct_wrench")
     gen_recipes()
     gen_tags()
     gen_lang()

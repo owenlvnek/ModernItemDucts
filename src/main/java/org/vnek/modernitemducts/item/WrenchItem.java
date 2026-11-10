@@ -3,7 +3,7 @@ package org.vnek.modernitemducts.item;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -15,6 +15,8 @@ import org.vnek.modernitemducts.ModernItemDucts;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 /**
  * The mod's own wrench. Any item in one of the common wrench tags works the same way on ducts
@@ -25,10 +27,10 @@ public class WrenchItem extends Item {
     public static final TagKey<Item> OWN_TAG = TagKey.create(Registries.ITEM, ModernItemDucts.id("wrenches"));
     /** Common community conventions (read-only; we never depend on another mod). */
     private static final List<TagKey<Item>> COMMON_TAGS = List.of(
-            TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("forge", "tools/wrench")),
-            TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("forge", "wrenches")),
-            TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "wrenches")),
-            TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "tools/wrench")));
+            TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("forge", "tools/wrench")),
+            TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("forge", "wrenches")),
+            TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "wrenches")),
+            TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "tools/wrench")));
 
     public WrenchItem(Properties props) {
         super(props);
@@ -48,7 +50,7 @@ public class WrenchItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("tooltip.modernitemducts.wrench").withStyle(net.minecraft.ChatFormatting.GRAY));
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
+        tooltip.accept(Component.translatable("tooltip.modernitemducts.wrench").withStyle(net.minecraft.ChatFormatting.GRAY));
     }
 }

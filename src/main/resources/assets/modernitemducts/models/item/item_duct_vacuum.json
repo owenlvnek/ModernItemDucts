@@ -1,6 +1,5 @@
 {
   "parent": "minecraft:block/block",
-  "render_type": "minecraft:cutout",
   "textures": {
     "particle": "modernitemducts:block/item_duct_vacuum",
     "core": "modernitemducts:block/item_duct_vacuum"

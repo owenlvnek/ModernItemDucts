@@ -15,6 +15,8 @@ import org.vnek.modernitemducts.block.DuctWeight;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 /**
  * Duct block item. The routing weight travels in the vanilla {@code minecraft:block_state} component, so vanilla
@@ -48,8 +50,8 @@ public class DuctBlockItem extends BlockItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("tooltip.modernitemducts.duct." + weightOf(stack).getSerializedName())
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
+        tooltip.accept(Component.translatable("tooltip.modernitemducts.duct." + weightOf(stack).getSerializedName())
                 .withStyle(ChatFormatting.GRAY));
     }
 }

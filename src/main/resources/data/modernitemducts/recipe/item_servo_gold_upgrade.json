@@ -3,16 +3,10 @@
   "category": "misc",
   "ingredients": [
     [
-      {
-        "item": "modernitemducts:item_servo_copper"
-      },
-      {
-        "item": "modernitemducts:item_servo_iron"
-      }
+      "modernitemducts:item_servo_copper",
+      "modernitemducts:item_servo_iron"
     ],
-    {
-      "item": "minecraft:gold_ingot"
-    }
+    "minecraft:gold_ingot"
   ],
   "result": {
     "id": "modernitemducts:item_servo_gold",

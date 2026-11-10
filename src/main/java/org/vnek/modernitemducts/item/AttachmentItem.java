@@ -21,6 +21,8 @@ import org.vnek.modernitemducts.block.DuctBlockEntity;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 /** Item form of a servo / retriever / filter. Right-click a duct (or a block next to one) to attach. */
 public class AttachmentItem extends Item {
@@ -49,22 +51,22 @@ public class AttachmentItem extends Item {
         }
         if (duct == null || face == null) return InteractionResult.PASS;
         if (duct.getAttachment(face) != null) return InteractionResult.FAIL;
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             duct.setAttachment(face, new Attachment(kind, tier));
             Player player = ctx.getPlayer();
             if (player == null || !player.getAbilities().instabuild) ctx.getItemInHand().shrink(1);
             level.playSound(null, duct.getBlockPos(), SoundEvents.METAL_PLACE, SoundSource.BLOCKS, 0.8f, 1.2f);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("tooltip.modernitemducts." + kind.name).withStyle(ChatFormatting.GRAY));
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
+        tooltip.accept(Component.translatable("tooltip.modernitemducts." + kind.name).withStyle(ChatFormatting.GRAY));
         if (kind.isActive()) {
-            tooltip.add(Component.translatable("tooltip.modernitemducts.stats",
+            tooltip.accept(Component.translatable("tooltip.modernitemducts.stats",
                     tier.maxItems, tier.interval / 20.0, tier.speed).withStyle(ChatFormatting.DARK_GRAY));
         }
-        tooltip.add(Component.translatable("tooltip.modernitemducts.slots", tier.filterSlots()).withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.accept(Component.translatable("tooltip.modernitemducts.slots", tier.filterSlots()).withStyle(ChatFormatting.DARK_GRAY));
     }
 }
